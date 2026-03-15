@@ -1,4 +1,4 @@
-# build_paris_cts_ready_jjas_sumproj.R
+# build_paris_cts_ready_jjas_sumproj.R: Script 5
 # Merge deaths + heat panel + greenness into one CTS-ready JJAS dataset
 #
 # Final run configuration:
@@ -119,16 +119,16 @@ dt[, month_f := factor(month)]
 dt[, dow_f := factor(dow, levels = 1:7, labels = c("Mon","Tue","Wed","Thu","Fri","Sat","Sun"))]
 dt[, arr_f := factor(arr, levels = paris_arr)]
 
-# District-year-month stratum as in CTS design
+# district-year-month stratum as in CTS design
 dt[, stratum := paste(arr, year, sprintf("%02d", month), sep = "_")]
 dt[, stratum_id := .GRP, by = stratum]
 
-# Day of summer season: June 1 = 1
+# day of summer season: June 1 = 1
 dt[, season_start := as.Date(sprintf("%d-06-01", year))]
 dt[, day_of_season := as.integer(date - season_start) + 1L]
 dt[, season_start := NULL]
 
-# Useful helpers
+# useful helpers
 dt[, weekend := as.integer(dow %in% c(6, 7))]
 dt[, deaths_nonzero := as.integer(deaths > 0)]
 
@@ -165,8 +165,15 @@ if (length(green_cols) == 0) {
 }
 
 # 5) IQR-standardise greenness metrics
-#    Standardization:
-#      G_std_iqr = (G - median(G)) / IQR(G)
+# Standardisation:  G_std_iqr = (G - median(G)) / IQR(G)
+# Computed over the N=20 arrondissement-level values (each arrondissement
+# contributes one value because greenness is time-invariant).
+# IQR standardisation (rather than SD) makes effect-modification
+# coefficients comparable across greenness metrics that have very different
+# natural scales (GVI 0-1, NDVI 0-1, IMU 0-100%) and is robust to
+# the small-N, potentially non-normal distribution of district-level
+# greenness. type=7 is R's default quantile algorithm (Hyndman & Fan
+# type 7), used throughout for consistency.
 std_iqr <- function(x) {
   med <- median(x, na.rm = TRUE)
   iq  <- IQR(x, na.rm = TRUE, type = 7)

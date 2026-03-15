@@ -1,9 +1,9 @@
 # plot_paris_effectmod_results.R
 #
-# Produce main manuscript figures (forest plots + curve plots).
+# Produce main figures (forest plots + curve plots).
 # Main paper run tag: _rerun_rule1_sum_ghsheat_ghsgreen.
 #
-# Clean plotting / results-packaging script for Paris heat × greenness CTS/DLNM
+# plotting / results-packaging script for Paris heat × greenness CTS/DLNM
 # results, updated for recent ggplot2 versions.
 
 # Inputs:
@@ -39,7 +39,7 @@
 library(data.table)
 library(ggplot2)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative : base_dir <- here::here() 
 
 norm_tag <- function(x) {
   x <- trimws(x)
@@ -117,7 +117,7 @@ save_plot_dual <- function(plot_obj, png_path, pdf_path, width, height, dpi = 32
   if (file.exists(png_path)) file.remove(png_path)
   if (file.exists(pdf_path)) file.remove(pdf_path)
   
-  # PNG: prefer ragg, otherwise use Quartz on macOS
+  # PNG: prefer ragg
   if (requireNamespace("ragg", quietly = TRUE)) {
     ragg::agg_png(
       filename = png_path,

@@ -1,4 +1,4 @@
-# build_paris_daily_deaths_fullgrid.R
+# build_paris_daily_deaths_fullgrid.R: Script 1 
 #
 # Create the complete arrondissement-day mortality panel (place of
 # residence) from data.xlsx. Produces a full 2008-01-01 to 2017-12-31
@@ -6,7 +6,7 @@
 #
 # Shared input for both the main paper heat panel
 # (build_paris_panel_deaths_heat_ghspopweighted_sumproj.R) and the
-# native appendix panel (build_paris_panel_deaths_heat_urbclim.R).
+# native/unweighted appendix panel (build_paris_panel_deaths_heat_urbclim.R).
 # Run this script first.
 #
 # Outputs:

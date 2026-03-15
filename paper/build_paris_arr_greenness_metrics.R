@@ -1,4 +1,4 @@
-# build_paris_arr_greenness_metrics.R
+# build_paris_arr_greenness_metrics.R: Script 4 
 #
 # Build arrondissement-level greenness metrics from GVI points, IMU
 # polygons, and NDVI summaries. Produces BOTH the GHS-POP pop-weighted
@@ -124,7 +124,7 @@ safe_share_nonmissing <- function(x, w) {
   sum(w[ok_w & ok_x], na.rm = TRUE) / denom
 }
 
-# 1) Read Paris arrondissement polygons 
+# 1) read Paris arrondissement polygons 
 arr_shp_candidates <- c(
   file.path(base_dir, "arrondissements.shp"),
   file.path(base_dir, "NDVI_Paris_2014_2017", "_tmp_paris_shp", "arrondissements.shp")
@@ -149,7 +149,7 @@ stopifnot(nrow(arr_sf) == 20)
 arr_sf_prj <- st_transform(arr_sf, analysis_crs)
 arr_sf_prj <- st_make_valid(arr_sf_prj)
 
-# 2) Read IMU and prepare vegetation variables
+# 2) read IMU and prepare vegetation variables
 imu <- imu_pick$data
 names(imu) <- tolower(names(imu))
 
@@ -165,11 +165,11 @@ if (!("popmen_imu" %in% names(imu))) {
 
 imu <- imu[, c("iv_haute", "iv_basse", "popmen_imu", "geometry")]
 
-# Drop Z/M if present
+# drop Z/M if present
 imu_zm <- try(suppressWarnings(st_zm(imu, drop = TRUE, what = "ZM")), silent = TRUE)
 if (!inherits(imu_zm, "try-error")) imu <- imu_zm
 
-# If CRS is missing, infer it:
+# if CRS is missing, infer it:
 # - shapefile IMU is usually projected (Lambert-93 / EPSG:2154)
 # - geojson is usually lon/lat (EPSG:4326)
 if (is.na(st_crs(imu))) {
@@ -195,16 +195,16 @@ imu$popmen_imu <- imu_pop_raw
 imu_prj <- st_transform(imu, analysis_crs)
 imu_prj <- imu_prj[!st_is_empty(imu_prj), ]
 
-# Keep only IMU polygons near/intersecting Paris
+# keep only IMU polygons near/intersecting Paris
 imu_prj <- st_filter(imu_prj, arr_sf_prj, .predicate = st_intersects)
 
 # IMU area for area-weighted averages
 imu_prj$imu_area <- as.numeric(st_area(imu_prj))
 
-# Stable polygon id for downstream joins
+# stable polygon id for future joins
 imu_prj$imu_id <- seq_len(nrow(imu_prj))
 
-# 3) Allocate IMU polygons to arrondissements by area intersection
+# 3) allocate IMU polygons to arrondissements by area intersection
 cat("Building IMU x arrondissement area intersections...\n")
 
 imu_prj <- st_make_valid(imu_prj)
@@ -215,8 +215,8 @@ imu_arr_int <- suppressWarnings(st_intersection(
 imu_arr_int <- imu_arr_int[!st_is_empty(imu_arr_int), ]
 imu_arr_int$part_area <- as.numeric(st_area(imu_arr_int))
 
-# Alternative population weights based on the same GHS raster used for GVI points.
-# This keeps IMU vegetation on IMU support, but harmonizes the population source.
+# alternative population weights based on the same GHS raster used for GVI points.
+# keeps IMU vegetation on IMU support, but harmonises the population source.
 imu_arr_int_wgs <- st_transform(imu_arr_int, 4326)
 imu_arr_int$pop_ghs_part <- suppressWarnings(as.numeric(
   exact_extract(pop_rast, imu_arr_int_wgs, "sum")
@@ -238,7 +238,7 @@ imu_arr_key[, pop_w_part := fifelse(
   NA_real_
 )]
 
-# Collapse multipart intersections to one row per IMU x arrondissement
+# collapse multipart intersections to one row per IMU x arrondissement
 imu_arr_key <- imu_arr_key[, .(
   area_w = sum(part_area, na.rm = TRUE),
   pop_w = if (any(is.finite(pop_w_part) & pop_w_part > 0)) {
@@ -260,7 +260,7 @@ imu_attr_dt <- as.data.table(st_drop_geometry(imu_prj))[, .(
 imu_poly_dt <- merge(imu_arr_key, imu_attr_dt, by = "imu_id", all.x = TRUE)
 setorder(imu_poly_dt, arr, imu_id)
 
-# Arrondissement IMU metrics (area- and population-weighted after area allocation)
+# arrondissement IMU metrics (area- and population-weighted after area allocation)
 imu_arr <- imu_poly_dt[, .(
   imu_high = safe_wmean(imu_high, area_w),
   imu_low = safe_wmean(imu_low, area_w),
@@ -282,7 +282,7 @@ imu_arr <- imu_poly_dt[, .(
 setorder(imu_arr, arr)
 
 # 4) GVI aggregation
-#    4A) keep legacy arrondissement point-mean GVI
+#    4A) keep arrondissement point-mean GVI
 #    4B) + harmonised GVI on IMU support, then area/pop aggregation to arr
 cat("Reading GVI CSV...\n")
 gvi <- fread(gvi_csv_path, showProgress = TRUE)
@@ -301,7 +301,7 @@ if ("lcz_filter_v3" %in% names(gvi)) {
   gvi <- gvi[lcz_filter_v3 %in% 1:10]
 }
 
-# Collapse duplicate coordinates
+# collapse duplicate coordinates
 gvi <- gvi[, .(gvi = mean(gvi, na.rm = TRUE)), by = .(x, y)]
 
 cat("Paris GVI points after filtering:", nrow(gvi), "\n")

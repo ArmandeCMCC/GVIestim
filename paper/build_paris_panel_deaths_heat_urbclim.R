@@ -1,6 +1,6 @@
-# build_paris_panel_deaths_heat_urbclim.R
+# build_paris_panel_deaths_heat_urbclim.R : Script 2 for native/unweighted version 
 #
-# APPENDIX comparison: native (area-average) heat panel.
+# APPENDIX comparison: native/unweighted (area-average) heat panel.
 # Extracts UrbClim daily heat metrics as simple arrondissement-level
 # area means (no population weighting). This is the counterpart of
 # build_paris_panel_deaths_heat_ghspopweighted_sumproj.R (main paper).
@@ -26,7 +26,7 @@ library(ncdf4)
 
 terra::gdalCache(4000)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative: base_dir <- here::here()
 
 deaths_full_path <- file.path(base_dir, "paris_daily_deaths_arr_residence_fullgrid_2008_2017.csv")
 arr_shp_candidates <- c(

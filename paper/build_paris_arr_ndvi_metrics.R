@@ -1,10 +1,10 @@
-# build_paris_arr_ndvi_metrics.R
+# build_paris_arr_ndvi_metrics.R: Script 3 for NDVI (rasters)
 #
-# Build NDVI arrondissement metrics from Copernicus CLMS 300m COGs
+# Build NDVI arrondissement metrics,
 # (JJAS 2014-2017). Run before build_paris_arr_greenness_metrics.R,
 # which merges the output into the unified greenness file.
 #
-# Produces both GHS-POP weighted (main paper) and native (appendix):
+# Produces both GHS-POP weighted (main paper) and unweighted/native (appendix):
 #   - ndvi_popw_ghs  : GHS-POP weighted (same pop source as GVI and IMU)
 #   - ndvi_areaw_arr : area-average (native/unweighted)
 #
@@ -346,7 +346,7 @@ for (i in seq_len(nrow(files_todo))) {
     arr_extract_crs <- r_crs
   }
 
-  # Reproject population raster to the NDVI grid once per grid definition
+  # reproject population raster to the NDVI grid once per grid definition
   grid_key <- paste(
     terra::crs(r, proj = TRUE),
     paste(round(terra::res(r), 12), collapse = ","),

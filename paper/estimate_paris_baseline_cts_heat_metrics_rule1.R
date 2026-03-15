@@ -1,9 +1,9 @@
-# estimate_paris_baseline_cts_heat_metrics_rule1.R
+# estimate_paris_baseline_cts_heat_metrics_rule1.R: Script 6
 #
 # Fit baseline heat-only CTS/DLNM models to recover MMT, p99, and IQR
 # for each of the 9 heat metrics (T2M/LST/WBGT x min/mean/max).
 # Used for BOTH the main paper run (_rerun_rule1_sum_ghsheat_ghsgreen)
-# and the native appendix comparison — only the CTS input differs.
+# and the native/unweighted appendix comparison — only the CTS input differs.
 #
 # Key methodological choice: approx(rule=1) returns NA outside the
 # observed range instead of extrapolating (rule=2). This is the
@@ -25,7 +25,7 @@ library(splines)
 library(gnm)
 library(dlnm)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative : base_dir <- here::here()
  
 norm_tag <- function(x) {
   x <- trimws(x)
@@ -72,15 +72,18 @@ if (length(heat_metrics) == 0) {
   stop("No heat metric columns found.")
 }
 
-# Restrict to JJAS just in case
+# restrict to JJAS just in case
 dt <- dt[month(date) %in% 6:9]
 
-# Factors needed by gnm
+# factors needed by gnm
 dt[, stratum_f := factor(stratum_id)]
 dt[, dow_f := factor(dow_f)]
 dt[, year_f := factor(year_f)]
 
 # 2) helpers
+# rule=1: return NA for temperatures outside the observed range rather than
+# extrapolating (rule=2). This is the conservative choice — the dose-response
+# curve should not be evaluated beyond the support of the data.
 pred_extract <- function(cp, x) {
   rr  <- approx(cp$predvar, cp$allRRfit,  xout = x, rule = 1)$y
   low <- approx(cp$predvar, cp$allRRlow,  xout = x, rule = 1)$y
@@ -108,6 +111,8 @@ for (metric in heat_metrics) {
   
   metric_min <- min(x, na.rm = TRUE)
   metric_max <- max(x, na.rm = TRUE)
+  # type=7 is R's default quantile algorithm (Hyndman & Fan type 7),
+  # used throughout for consistency across all scripts.
   metric_p90 <- as.numeric(quantile(x, 0.90, na.rm = TRUE, type = 7))
   metric_p99 <- as.numeric(quantile(x, 0.99, na.rm = TRUE, type = 7))
   metric_iqr <- IQR(x, na.rm = TRUE, type = 7)
@@ -116,7 +121,7 @@ for (metric in heat_metrics) {
   cat("Range:", round(metric_min, 3), "to", round(metric_max, 3), "\n")
   cat("p90:", round(metric_p90, 3), " p99:", round(metric_p99, 3), " IQR:", round(metric_iqr, 3), "\n")
   
-  # Prediction grid
+  # prediction grid
   at_grid <- seq(
     floor(metric_min * 10) / 10,
     ceiling(metric_max * 10) / 10,
@@ -124,6 +129,15 @@ for (metric in heat_metrics) {
   )
   
   # DLNM crossbasis
+  # - Exposure-response: natural cubic B-spline with 1 internal knot at
+  #   p90 of the summer temperature distribution, following Paris Paper.
+  #   The knot at p90 concentrates
+  #   flexibility in the upper tail where the heat-mortality relationship
+  #   steepens, while keeping the curve smooth elsewhere.
+  # - Lag-response: integer function over lag 0-1 (same-day + next-day),
+  #   capturing the effect of heat on mortality. Short lags are
+  #   standard in summer heat-mortality studies because heat effects on
+  #   all-cause mortality are immediate 
   cb <- crossbasis(
     x,
     lag = 1,
@@ -131,7 +145,16 @@ for (metric in heat_metrics) {
     arglag = list(fun = "integer")
   )
   
-  # Baseline CTS model
+  # Baseline CTS model following the case time series (CTS) design
+  # - quasipoisson(): accounts for overdispersion in daily death counts.
+  # - eliminate = stratum_f: conditions out district-year-month intercepts
+  #   via exact Poisson conditioning, controlling all time-invariant
+  #   confounders within each stratum (equivalent to conditional logistic
+  #   regression but for count data). This is central to the CTS design.
+  # - ns(day_of_season, df=4):year_f: smooth intra-seasonal trend with
+  #   4 df, interacted with year to allow the seasonal shape to vary
+  #   across years (captures e.g. varying summer onset).
+  # - dow_f: day-of-week fixed effects for within-week mortality patterns.
   fit <- gnm(
     deaths ~ cb + dow_f + ns(day_of_season, df = 4):year_f,
     eliminate = stratum_f,
@@ -140,7 +163,7 @@ for (metric in heat_metrics) {
     trace = FALSE
   )
   
-  # First prediction just to locate MMT
+  # first prediction just to locate MMT
   cp0 <- crosspred(
     cb,
     fit,
@@ -153,7 +176,7 @@ for (metric in heat_metrics) {
   
   cat("MMT:", round(mmt, 3), "\n")
   
-  # Re-center predictions at MMT
+  # re-center predictions at MMT
   cp <- crosspred(
     cb,
     fit,
@@ -161,7 +184,7 @@ for (metric in heat_metrics) {
     cen = mmt
   )
   
-  # Comparable evaluation points
+  # comparable evaluation points
   target_1iqr <- mmt + metric_iqr
   target_2iqr <- mmt + 2 * metric_iqr
   
@@ -169,7 +192,7 @@ for (metric in heat_metrics) {
   iqr1_res <- pred_extract(cp, target_1iqr)
   iqr2_res <- pred_extract(cp, target_2iqr)
   
-  # Save curve
+  # save curve
   curve_dt <- data.table(
     metric = metric,
     temp = cp$predvar,
@@ -184,7 +207,7 @@ for (metric in heat_metrics) {
   
   curve_list[[metric]] <- curve_dt
   
-  # Save summary
+  # save summary
   summary_dt <- data.table(
     metric = metric,
     n_obs = nrow(sub),

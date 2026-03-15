@@ -1,9 +1,9 @@
-# estimate_paris_effect_modification_cts_heat_green_rule1.R
+# estimate_paris_effect_modification_cts_heat_green_rule1.R: Script 7 
 #
 # Fit heat x greenness interaction CTS/DLNM models for all 9 heat metrics
 # crossed with every available IQR-standardised greenness metric.
 # Used for BOTH the main paper run (_rerun_rule1_sum_ghsheat_ghsgreen)
-# and the native appendix comparison — only the CTS and baseline inputs differ.
+# and the native/unweighted appendix comparison — only the CTS and baseline inputs differ.
 #
 # Key methodological choices:
 #   - approx(rule=1): NA outside observed range (corrected version)
@@ -32,7 +32,7 @@ library(splines)
 library(gnm)
 library(dlnm)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative: base_dir <- here::here() 
 
 norm_tag <- function(x) {
   x <- trimws(x)
@@ -74,13 +74,13 @@ if (length(missing_req) > 0) {
   stop("Missing required columns in CTS-ready file: ", paste(missing_req, collapse = ", "))
 }
 
-# Restrict to JJAS just in case
+# restrict to JJAS just in case
 dt <- dt[month(date) %in% 6:9]
 
-# Factors for gnm
+# factors for gnm
 dt[, stratum_f := factor(stratum_id)]
 
-# Rebuild clean factors after fread()
+# rebuild clean factors after fread()
 if ("dow_f" %in% names(dt)) {
   dt[, dow_f := factor(as.character(dow_f),
                        levels = c("Mon","Tue","Wed","Thu","Fri","Sat","Sun"))]
@@ -137,6 +137,9 @@ base <- base[metric %in% heat_metrics]
 setkey(base, metric)
 
 # 2) helpers
+# rule=1: return NA for temperatures outside the observed range rather than
+# extrapolating (rule=2). Conservative choice — avoids out-of-sample
+# extrapolation of the dose-response curve.
 pred_extract <- function(cp, x) {
   rr  <- approx(cp$predvar, cp$allRRfit,  xout = x, rule = 1)$y
   low <- approx(cp$predvar, cp$allRRlow,  xout = x, rule = 1)$y
@@ -144,9 +147,11 @@ pred_extract <- function(cp, x) {
   list(rr = rr, low = low, high = hi)
 }
 
-# interaction-only contrast:
-# if cp_int is the RR curve for a +1 unit increase in standardised green,
-# then moving from -1 to +1 corresponds to delta_g = 2
+# Interaction-only contrast: rescale the per-unit interaction RR to an
+# arbitrary greenness difference delta_g in standardised units.
+# The default delta_g=2 corresponds to moving from -1 IQR to +1 IQR.
+# For p10→p90 contrasts, delta_g = g_std_p90 - g_std_p10.
+# Log-linearity in the modifier is assumed (linear interaction model).
 contrast_from_cp_int <- function(cp_int, x, delta_g = 2) {
   one <- pred_extract(cp_int, x)
   
@@ -246,7 +251,15 @@ for (h in heat_metrics) {
       next
     }
     
-    # Raw greenness summary across arrondissements
+    # raw greenness summary across arrondissements.
+    # greenness is IQR-standardised: G_std = (G - median) / IQR, computed
+    # over the N=20 arrondissement-level values. IQR standardisation
+    # (rather than SD) makes coefficients comparable across metrics with
+    # different natural scales (GVI 0-1, NDVI 0-1, IMU 0-100%) and is
+    # robust to the small-N, potentially non-normal distribution of
+    # district-level greenness.
+    # type=7 is R's default quantile algorithm,
+    # used throughout for consistency.
     if (graw %in% names(sub)) {
       g_arr <- unique(sub[, .(arr, g_raw = get(graw), g_std = get(gstd))], by = "arr")
       g_raw_median <- median(g_arr$g_raw, na.rm = TRUE)
@@ -274,7 +287,7 @@ for (h in heat_metrics) {
       g_std_p90    <- NA_real_
     }
 
-    # Fallback if standardized p10/p90 is not finite
+    # fallback if standardized p10/p90 is not finite
     if (!is.finite(g_std_p10)) g_std_p10 <- -1
     if (!is.finite(g_std_p90)) g_std_p90 <- 1
     delta_std_p10p90 <- g_std_p90 - g_std_p10
@@ -282,7 +295,9 @@ for (h in heat_metrics) {
     x <- sub[[h]]
     g <- sub[[gstd]]
     
-    # Heat crossbasis
+    # heat crossbasis — same spec as the baseline model (see
+    # estimate_paris_baseline_cts_heat_metrics_rule1.R for rationale):
+    # ns with 1 knot at p90, integer lag 0-1.
     cbh <- crossbasis(
       x,
       lag = 1,
@@ -290,12 +305,23 @@ for (h in heat_metrics) {
       arglag = list(fun = "integer")
     )
     colnames(cbh) <- paste0("h", seq_len(ncol(cbh)))
-    
-    # Interaction block: same crossbasis columns multiplied by green
+
+    # interaction block: element-wise product cbh * g implements a linear
+    # interaction between the heat crossbasis and IQR-standardised greenness.
+    # This follows Achebak et al. (2026): "we extended the baseline model by
+    # introducing a linear interaction between the temperature cross-basis
+    # and each contextual variable in turn." Each contextual variable enters
+    # one model at a time because with N=20 districts, multiple time-invariant
+    # modifiers cannot be mutually adjusted (the CTS design absorbs their
+    # main effects into fixed intercepts, but their interactions are
+    # identifiable).
     cbg <- cbh
     cbg[] <- cbh[] * g
     colnames(cbg) <- paste0("g", seq_len(ncol(cbg)))
-    
+
+    # CTS effect-modification model — same structure as baseline plus the
+    # greenness interaction term (cbg). See baseline script for rationale
+    # on quasipoisson, eliminate, seasonal spline, and day-of-week FE.
     fit <- tryCatch(
       gnm(
         deaths ~ cbh + cbg + dow_f + ns(day_of_season, df = 4):year_f,
@@ -370,7 +396,7 @@ for (h in heat_metrics) {
       cen = h_mmt
     )
     
-    # Interaction-only curve: RR per +1 standardized-green unit
+    # interaction-only curve: RR per +1 standardized-green unit
     cp_int <- crosspred(
       cbh,
       coef = beta_g,
@@ -380,7 +406,7 @@ for (h in heat_metrics) {
       cen = h_mmt
     )
     
-    # Predictions at target temperatures
+    # predictions at target temperatures
     low_p99   <- pred_extract(cp_low_iqr,  h_p99)
     high_p99  <- pred_extract(cp_high_iqr, h_p99)
     mod_p99   <- contrast_from_cp_int(cp_int, h_p99, delta_g = 2)
@@ -393,12 +419,12 @@ for (h in heat_metrics) {
     high_2iqr <- pred_extract(cp_high_iqr, target_2iqr)
     mod_2iqr  <- contrast_from_cp_int(cp_int, target_2iqr, delta_g = 2)
 
-    # Additional support-safe p10->p90 contrasts (for traceability)
+    # additional support-safe p10->p90 contrasts (for traceability)
     mod_p99_p10p90  <- contrast_from_cp_int(cp_int, h_p99,      delta_g = delta_std_p10p90)
     mod_1iqr_p10p90 <- contrast_from_cp_int(cp_int, target_1iqr, delta_g = delta_std_p10p90)
     mod_2iqr_p10p90 <- contrast_from_cp_int(cp_int, target_2iqr, delta_g = delta_std_p10p90)
     
-    # Summary row
+    # summary row
     srow <- data.table(
       heat_metric = h,
       green_metric_std = gstd,
@@ -491,7 +517,7 @@ for (h in heat_metrics) {
     model_counter <- model_counter + 1L
     summary_list[[model_counter]] <- srow
     
-    # Curves for plotting
+    # curves for plotting
     curve_low_iqr <- data.table(
       heat_metric = h,
       green_metric_std = gstd,
@@ -559,7 +585,7 @@ for (h in heat_metrics) {
       curve_p90
     )
     
-    # Incremental save so progress is not lost if R crashes
+    # incremental save so progress is not lost if R crashes
     summary_sofar <- rbindlist(summary_list, fill = TRUE)
     curves_sofar  <- rbindlist(curve_list, fill = TRUE)
     

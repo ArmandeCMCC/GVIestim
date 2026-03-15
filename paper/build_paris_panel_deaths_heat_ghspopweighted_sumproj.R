@@ -1,14 +1,12 @@
-# build_paris_panel_deaths_heat_ghspopweighted_sumproj.R
+# build_paris_panel_deaths_heat_ghspopweighted_sumproj.R: Script 2 for pop-weighted with ghs-pop version 
 #
 # MAIN PAPER heat panel. Build the arrondissement-day heat exposure panel
 # where UrbClim metrics are population-weighted using GHS-POP with
 # sum-preserving reprojection (method="sum"). This ensures population
 # counts are conserved when moving from the GHS-POP grid to the UrbClim
-# grid, unlike bilinear interpolation which can drop arrondissements
-# with low population coverage (e.g. 12th/16th with Bois de Vincennes/
-# Boulogne).
+# grid, unlike bilinear interpolation.
 #
-# For the appendix native comparison, use build_paris_panel_deaths_heat_urbclim.R
+# For the appendix native/unweighted comparison, use build_paris_panel_deaths_heat_urbclim.R
 # which extracts simple area-average heat (no population weighting).
 #
 # Outputs:
@@ -62,14 +60,14 @@ metric_dirs <- list(
 years <- 2008:2017
 stats <- c("min", "mean", "max")
 
-# 1) Read deaths panel (full 2008-2017 grid by arrondissement)
+# 1) read deaths panel (full 2008-2017 grid by arrondissement)
 deaths <- fread(deaths_full_path)
 stopifnot(all(c("arr", "date", "deaths") %in% names(deaths)))
 deaths[, date := as.Date(date)]
 deaths[, arr := as.character(arr)]
 stopifnot(uniqueN(deaths$arr) == 20)
 
-# 2) Read arrondissement polygons and project to UrbClim CRS (EPSG:3035)
+# 2) read arrondissement polygons and project to UrbClim CRS (EPSG:3035)
 arr_sf <- st_read(arr_shp_path, quiet = TRUE)
 
 if (!("c_arinsee" %in% names(arr_sf))) {
@@ -82,13 +80,13 @@ stopifnot(nrow(arr_sf) == 20)
 
 arr_sf_3035 <- st_transform(arr_sf, 3035)
 
-# 3) Load population raster (source CRS kept as-is; reprojected per NetCDF grid)
+# 3) load population raster (source CRS kept as-is; reprojected per NetCDF grid)
 pop_rast <- rast(pop_rast_path)
 
-# 4) Helper functions
+# 4) helper functions
 parse_date_from_colname <- function(x) {
   s <- as.character(x)
-  # Handles names like:
+  # handles names like:
   #   "mean.2008-01-01" and "weighted_mean.2008-01-01"
   s <- sub("^weighted[_\\.]*mean\\.", "", s, ignore.case = TRUE)
   s <- sub("^[A-Za-z_]+\\.", "", s)
@@ -126,7 +124,7 @@ extract_arr_daily_popw <- function(nc_path, value_name, arr_polygons_3035, pop_w
   if (is.null(dts)) stop("No time dimension detected in: ", nc_path)
   names(r) <- format(dts, "%Y-%m-%d")
 
-  # Reproject population counts onto the UrbClim grid using sum-preserving transfer (not BILINEAR!!)
+  # reproject population counts onto the UrbClim grid using sum-preserving transfer (not BILINEAR!!)
   w <- project(pop_weights_rast, r[[1]], method = "sum")
   # Zero-weight (not NA) for unpopulated cells: exact_extract's built-in => otherwise drops arrondissements (12 and 16)
   # "weighted_mean" does NOT skip NA weights, so NA here would propagate NaN
@@ -148,7 +146,7 @@ extract_arr_daily_popw <- function(nc_path, value_name, arr_polygons_3035, pop_w
   long
 }
 
-# 5) Extract daily heat exposures (9 metrics) with GHS-pop weighting
+# 5) extract daily heat exposures (9 metrics) with GHS-pop weighting
 expo_list <- list()
 
 for (metric in names(metric_dirs)) {
@@ -176,7 +174,7 @@ for (metric in names(metric_dirs)) {
 
 expo <- Reduce(function(a, b) merge(a, b, by = c("arr", "date"), all = TRUE), expo_list)
 
-# 6) Merge deaths + exposures, add calendar fields, save full panel and JJAS
+# 6) merge deaths + exposures, add calendar fields, save full panel and JJAS
 panel <- merge(deaths, expo, by = c("arr", "date"), all.x = TRUE)
 
 expo_cols <- setdiff(names(expo), c("arr", "date"))

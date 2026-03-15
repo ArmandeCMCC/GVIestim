@@ -2,7 +2,7 @@
 #
 # Run ONE attributable-burden scenario (one heat x one green metric).
 # Used for both the main paper run (_rerun_rule1_sum_ghsheat_ghsgreen)
-# and the native appendix comparison, controlled by RUN_TAG / CTS_TAG.
+# and the native/unweighted appendix comparison, controlled by RUN_TAG / CTS_TAG.
 #
 # For each selected heat x green pair, refits the effect-modification
 # model and estimates observed, counterfactual, and avoided heat-
@@ -29,7 +29,7 @@ library(splines)
 library(gnm)
 library(dlnm)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative : base_dir <- here::here() 
 
 norm_tag <- function(x) {
   x <- trimws(x)
@@ -114,11 +114,13 @@ if (!(selected_green_raw %in% names(dt))) {
 # Restrict to JJAS just in case
 dt <- dt[month(date) %in% 6:9]
 
-# User-set denominator for standardized impact metrics
+# Population denominator for per-100k standardisation.
+# 2.2 million is the average Paris intra-muros population over the study
+# period 2008-2017 (Achebak et al. 2026).
 city_population_ref <- 2200000
 n_summers <- uniqueN(year(dt$date))
 
-# Factors for gnm
+# factors for gnm
 dt[, stratum_f := factor(stratum_id)]
 
 if ("dow_f" %in% names(dt)) {
@@ -197,6 +199,11 @@ at_grid <- seq(
   by = 0.1
 )
 
+# Same DLNM crossbasis + CTS model as baseline and effectmod scripts.
+# See estimate_paris_baseline_cts_heat_metrics_rule1.R for rationale on
+# the ns knot at p90, integer lag 0-1, quasipoisson, and the seasonal
+# spline. The interaction cbg = cbh * g implements linear effect
+# modification by IQR-standardised greenness.
 cbh <- crossbasis(
   x,
   lag = 1,
@@ -322,9 +329,10 @@ predict_rr_vec <- function(temp_vec, g_std_vec) {
   for (gu in u) {
     idx <- which(round(g_std_vec, 8) == gu)
     cp <- get_cp_for_g(gu)
+    # rule=1: NA outside observed range (no extrapolation)
     out[idx] <- approx(cp$predvar, cp$allRRfit, xout = temp_vec[idx], rule = 1)$y
   }
-  
+
   out
 }
 

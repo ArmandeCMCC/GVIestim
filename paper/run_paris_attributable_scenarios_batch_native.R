@@ -1,6 +1,6 @@
 # run_paris_attributable_scenarios_batch_native.R
 #
-# APPENDIX comparison: native (area-average) heat + native (unweighted) green.
+# APPENDIX comparison: native/unweighted (area-average) heat + native (unweighted) green.
 # Counterpart of run_paris_attributable_scenarios_batch.R (which uses
 # GHS-POP pop-weighted heat and green metrics reported in the main paper).
 # Both scripts must use identical methodology (rule=1, same DLNM spec)
@@ -20,7 +20,7 @@ library(splines)
 library(gnm)
 library(dlnm)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative:  base_dir <- here::here() 
 
 norm_tag <- function(x) {
   x <- trimws(x)
@@ -47,9 +47,7 @@ cat(" - RUN_TAG:", ifelse(nzchar(run_tag), run_tag, "<none>"), "\n")
 cat(" - input CTS:", in_cts, "\n")
 cat(" - input baseline:", in_base, "\n")
 
-# ------------------------------------------------------------------------------
-# 0) Load once
-# ------------------------------------------------------------------------------
+# 0) load 
 dt <- fread(in_cts)
 base <- fread(in_base)
 
@@ -61,12 +59,12 @@ if (length(missing_req) > 0) {
   stop("Missing required columns in CTS-ready file: ", paste(missing_req, collapse = ", "))
 }
 
-# Restrict to JJAS just in case
+# restrict to JJAS just in case
 dt <- dt[month(date) %in% 6:9]
 
-# ------------------------------------------------------------------------------
-# User-set denominator for standardized impact metrics
-# ------------------------------------------------------------------------------
+# population denominator for per-100k standardisation.
+# 2.2 million is the average Paris intra-muros population over the study
+# period 2008-2017 (Achebak et al. 2026) => not super important, just for the per 100k 
 city_population_ref <- 2200000
 n_summers <- uniqueN(year(dt$date))
 
@@ -92,9 +90,7 @@ if ("year" %in% names(dt)) {
   stop("Need either year or year_f in CTS-ready file.")
 }
 
-# ------------------------------------------------------------------------------
-# 1) Helpers
-# ------------------------------------------------------------------------------
+# 1) helpers
 resolve_block_names <- function(fit, object_name, mat_obj) {
   beta_names <- names(coef(fit))
   cn <- colnames(mat_obj)
@@ -193,6 +189,8 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
     by = 0.1
   )
   
+  # Same DLNM crossbasis + CTS model as the main batch runner.
+  # See estimate_paris_baseline_cts_heat_metrics_rule1.R for rationale.
   cbh <- crossbasis(
     x,
     lag = 1,
@@ -200,11 +198,11 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
     arglag = list(fun = "integer")
   )
   colnames(cbh) <- paste0("h", seq_len(ncol(cbh)))
-  
+
   cbg <- cbh
   cbg[] <- cbh[] * g
   colnames(cbg) <- paste0("g", seq_len(ncol(cbg)))
-  
+
   fit <- gnm(
     deaths ~ cbh + cbg + dow_f + ns(day_of_season, df = 4):year_f,
     eliminate = stratum_f,
@@ -227,9 +225,7 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
   V_hg <- V[h_names, g_names, drop = FALSE]
   V_gh <- V[g_names, h_names, drop = FALSE]
   
-  # --------------------------------------------------------------------------
   # Arrondissement-level greenness scenarios
-  # --------------------------------------------------------------------------
   arr_green <- unique(sub[, .(
     arr,
     green_raw_obs = get(selected_green_raw),
@@ -276,9 +272,7 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
     )]
   ), use.names = TRUE)
   
-  # --------------------------------------------------------------------------
   # RR prediction for arbitrary greenness level
-  # --------------------------------------------------------------------------
   cp_cache <- new.env(parent = emptyenv())
   
   get_cp_for_g <- function(g_value_std) {
@@ -318,15 +312,14 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
     for (gu in u) {
       idx <- which(round(g_std_vec, 8) == gu)
       cp <- get_cp_for_g(gu)
+      # rule=1: NA outside observed range (no extrapolation)
       out[idx] <- approx(cp$predvar, cp$allRRfit, xout = temp_vec[idx], rule = 1)$y
     }
-    
+
     out
   }
   
-  # --------------------------------------------------------------------------
   # Expand to scenario panel and compute attributable deaths
-  # --------------------------------------------------------------------------
   row_dt <- merge(
     sub[, .(
       arr, date, deaths,
@@ -370,9 +363,7 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
   row_dt[, ad_scn := af_scn * deaths]
   row_dt[, ad_avoided := ad_obs - ad_scn]
   
-  # --------------------------------------------------------------------------
   # Summaries
-  # --------------------------------------------------------------------------
   by_arr <- row_dt[, .(
     deaths_total = sum(deaths, na.rm = TRUE),
     deaths_hot_days = sum(deaths[above_threshold], na.rm = TRUE),
@@ -456,9 +447,7 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
   invisible(summary_dt)
 }
 
-# ------------------------------------------------------------------------------
 # 2) Batch specifications
-# ------------------------------------------------------------------------------
 specs <- data.table(
   selected_heat = c(
     "wbgt_mean",
@@ -505,9 +494,7 @@ specs <- data.table(
     "lstmax_imuvegtotal_mmt_native"
   )
 )
-# ------------------------------------------------------------------------------
 # 3) Run all
-# ------------------------------------------------------------------------------
 results <- vector("list", nrow(specs))
 
 for (i in seq_len(nrow(specs))) {

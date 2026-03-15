@@ -61,7 +61,9 @@ if (length(missing_req) > 0) {
 # restrict to JJAS just in case
 dt <- dt[month(date) %in% 6:9]
 
-# user-set denominator for standardized impact metrics
+# Population denominator for per-100k standardisation.
+# 2.2 million is the average Paris intra-muros population over the study
+# period 2008-2017 (Achebak et al. 2026, npj Urban Sustainability 6:29).
 city_population_ref <- 2200000
 n_summers <- uniqueN(year(dt$date))
 
@@ -186,6 +188,8 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
     by = 0.1
   )
   
+  # Same DLNM crossbasis + CTS model as baseline and effectmod scripts.
+  # See estimate_paris_baseline_cts_heat_metrics_rule1.R for rationale.
   cbh <- crossbasis(
     x,
     lag = 1,
@@ -193,11 +197,11 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
     arglag = list(fun = "integer")
   )
   colnames(cbh) <- paste0("h", seq_len(ncol(cbh)))
-  
+
   cbg <- cbh
   cbg[] <- cbh[] * g
   colnames(cbg) <- paste0("g", seq_len(ncol(cbg)))
-  
+
   fit <- gnm(
     deaths ~ cbh + cbg + dow_f + ns(day_of_season, df = 4):year_f,
     eliminate = stratum_f,
@@ -307,9 +311,10 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
     for (gu in u) {
       idx <- which(round(g_std_vec, 8) == gu)
       cp <- get_cp_for_g(gu)
+      # rule=1: NA outside observed range (no extrapolation)
       out[idx] <- approx(cp$predvar, cp$allRRfit, xout = temp_vec[idx], rule = 1)$y
     }
-    
+
     out
   }
   

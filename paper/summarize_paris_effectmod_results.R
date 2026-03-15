@@ -1,6 +1,6 @@
-# summarize_paris_effectmod_results.R
+# summarize_paris_effectmod_results.R: Script 8
 #
-# Convert raw effectmod outputs into paper-ready estimands/tables.
+# Convert raw effectmod outputs into estimands/tables.
 # Main paper run tag: _rerun_rule1_sum_ghsheat_ghsgreen.
 #
 # Post-process Paris heat × greenness effect-modification results
@@ -12,7 +12,7 @@
 # Main goals:
 #   1) Keep the PRIMARY estimand:
 #        greenness from p10 to p90
-#   2) Keep the harmonized sensitivity estimand:
+#   2) Keep the harmonised sensitivity estimand:
 #        greenness from -1 IQR to +1 IQR
 #   3) Add a paper-style companion estimand:
 #        greenness from observed min to observed max
@@ -40,7 +40,7 @@
 
 library(data.table)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative:  base_dir <- here::here() 
 
 norm_tag <- function(x) {
   x <- trimws(x)
@@ -129,7 +129,7 @@ if (any(is.na(dt$green_iqr_check))) {
   stop("Some greenness metrics in effectmod results were not found in greenness summary.")
 }
 
-# These models were fit on standardized greenness:
+# These models were fit on standardised greenness:
 #   G_std = (G - median(G)) / IQR(G)
 #
 # The fitted rr_ratio_* in eff correspond to a move from -1 std-IQR to +1 std-IQR,
@@ -150,10 +150,10 @@ dt[, iqr_high_above_observed_max := green_raw_high > green_max]
 # 3) helper to rescale RR contrasts from delta_std = 2 to arbitrary delta_std
 rescale_rr_contrast <- function(rr2, low2, high2, delta_to, delta_from = 2) {
   # rr2 is the RR ratio for delta_from standardized units (here 2)
-  # We assume log-linearity in the modifier contrast:
+  # we assume log-linearity in the modifier contrast:
   #   log(RR_delta) = (delta_to / delta_from) * log(RR_delta_from)
   #
-  # Recover SE on log scale from the reported CI
+  # recover SE on log scale from the reported CI
   log_rr2 <- log(rr2)
   se2 <- (log(high2) - log(low2)) / (2 * 1.96)
   
@@ -287,6 +287,11 @@ make_endpoint_table <- function(DT, endpoint = c("p99", "1iqr", "2iqr")) {
   out
 }
 
+# Benjamini-Hochberg FDR correction across all primary comparisons
+# (9 heat metrics x 5 GHS-weighted green metrics = 45 tests in the
+# main set). BH controls the expected false discovery rate, which is
+# appropriate when reporting many model specifications and wanting to
+# flag which are likely robust to multiple testing.
 add_fdr_primary <- function(tab) {
   tab <- copy(tab)
   tab[, `:=`(
@@ -351,7 +356,7 @@ tab_p99_paper[, green_order_id := NULL]
 rank_p99_paper <- copy(tab_p99_paper)
 setorder(rank_p99_paper, cr_mod_paper)
 
-# native-main counterparts (clean map-choice comparison)
+# native/unweighted-main counterparts 
 tab_p99_native  <- tab_p99_all[green_metric_raw %in% green_order_native_main]
 tab_1iqr_native <- tab_1iqr_all[green_metric_raw %in% green_order_native_main]
 tab_2iqr_native <- tab_2iqr_all[green_metric_raw %in% green_order_native_main]
