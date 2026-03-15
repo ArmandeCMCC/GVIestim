@@ -11,7 +11,7 @@ library(splines)
 library(dlnm)
 library(fixest)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative : base_dir <- here::here() 
 
 norm_tag <- function(x) {
   x <- trimws(x)

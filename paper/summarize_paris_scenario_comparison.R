@@ -4,7 +4,7 @@
 # reporting and ranking. Main paper run tag: _rerun_rule1_sum_ghsheat_ghsgreen.
 #
 # Stack multiple Paris attributable-deaths scenario runs into one
-# publication-ready comparison table.
+# comparison table.
 #
 # What it does:
 #   1) Finds all files like:
@@ -30,7 +30,7 @@
 
 library(data.table)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative : base_dir <- here::here() 
 
 norm_tag <- function(x) {
   x <- trimws(x)
@@ -50,7 +50,7 @@ out_wide <- tag_file("paris_attr_scenario_comparison_wide", run_tag)
 out_rank <- tag_file("paris_attr_scenario_comparison_ranked", run_tag)
 
 # Backward-compatibility defaults for legacy scenario files that predate
-# standardized per-100k outputs.
+# standardised per-100k outputs.
 default_population_denominator <- 2200000
 default_n_summers <- 10
 

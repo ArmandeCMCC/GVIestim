@@ -1,6 +1,6 @@
 # export_paris_appendix_effectmod_tables.R
 #
-# Build Overleaf-ready appendix tables:
+# build Overleaf-ready appendix tables:
 # - one table per heat metric
 # - three greenness columns (GVI, NDVI, IMU total)
 # - rows for primary (p10->p90) and companion (min->max) contrasts at p99
@@ -16,8 +16,8 @@
 
 library(data.table)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
-
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative : base_dir <- here::here() 
+ 
 norm_tag <- function(x) {
   x <- trimws(x)
   if (!nzchar(x)) return("")

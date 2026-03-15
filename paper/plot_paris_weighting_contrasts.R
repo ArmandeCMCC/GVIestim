@@ -10,7 +10,7 @@ suppressPackageStartupMessages({
   library(ggplot2)
 })
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative : base_dir <- here::here() 
 setwd(base_dir)
 
 run_tag <- "_rerun_rule1_sum_ghsheat_ghsgreen"
@@ -21,14 +21,14 @@ native_file   <- paste0("paris_effectmod_primary_table_p99_native", run_tag, ".c
 w <- fread(weighted_file)
 n <- fread(native_file)
 
-# Map weighted green metrics to their native counterparts
+# map weighted green metrics to their native/unweighted counterparts
 green_map <- data.table(
   green_w = c("gvi_popw_points", "ndvi_popw_ghs", "imu_veg_total_popw_ghs"),
   green_n = c("gvi_mean", "ndvi_native_jjas", "imu_veg_total"),
   green_label = c("GVI", "NDVI", "IMU total")
 )
 
-# Subset to primary 3 green metrics
+# subset to primary 3 green metrics
 w3 <- w[green_metric_raw %in% green_map$green_w,
          .(heat_metric, green_metric_raw,
            cr_w = cr_mod_primary, cr_w_low = cr_mod_primary_low, cr_w_high = cr_mod_primary_high)]
@@ -36,18 +36,18 @@ n3 <- n[green_metric_raw %in% green_map$green_n,
          .(heat_metric, green_metric_raw,
            cr_n = cr_mod_primary, cr_n_low = cr_mod_primary_low, cr_n_high = cr_mod_primary_high)]
 
-# Add mapping keys
+# add mapping keys
 w3 <- merge(w3, green_map, by.x = "green_metric_raw", by.y = "green_w")
 n3 <- merge(n3, green_map[, .(green_n, green_label)], by.x = "green_metric_raw", by.y = "green_n")
 
-# Merge weighted and native
+# merge weighted and native
 dt <- merge(
   w3[, .(heat_metric, green_label, cr_w, cr_w_low, cr_w_high)],
   n3[, .(heat_metric, green_label, cr_n, cr_n_low, cr_n_high)],
   by = c("heat_metric", "green_label")
 )
 
-# Contrast: native - weighted (positive = weighted shows stronger attenuation)
+# contrast: native - weighted (positive = weighted shows stronger attenuation)
 dt[, contrast := cr_n - cr_w]
 # Approximate SE: sqrt(se_w^2 + se_n^2), from CI widths
 dt[, se_w := (cr_w_high - cr_w_low) / (2 * 1.96)]
@@ -56,7 +56,7 @@ dt[, se_contrast := sqrt(se_w^2 + se_n^2)]
 dt[, contrast_low := contrast - 1.96 * se_contrast]
 dt[, contrast_high := contrast + 1.96 * se_contrast]
 
-# Heat metric labels
+# heat metric labels
 heat_labels <- c(
   "t2m_min" = "T2M min", "t2m_mean" = "T2M mean", "t2m_max" = "T2M max",
   "lst_min" = "LST min", "lst_mean" = "LST mean", "lst_max" = "LST max",
@@ -110,7 +110,7 @@ cat("Saved:\n")
 cat(" -", out_png, "\n")
 cat(" -", out_pdf, "\n")
 
-# Also print summary
+# also print summary
 cat("\nContrast summary (positive = pop-weighted shows stronger attenuation):\n")
 print(dt[, .(heat_label, green_label, contrast = round(contrast, 2),
              CI = paste0("[", round(contrast_low, 2), ", ", round(contrast_high, 2), "]"))])

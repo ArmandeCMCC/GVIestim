@@ -224,7 +224,7 @@ get_heat_family <- function(x) {
 
 get_heat_stat <- function(x) sub("^[^_]+_", "", x)
 
-# 4) clean / relabel harmonized results
+# 4) clean / relabel harmonised results
 plot_dt <- copy(harm)[
   heat_metric %in% heat_order & green_metric_raw %in% green_order
 ]
@@ -378,7 +378,7 @@ forest_plot_native <- ggplot(
 
 save_plot_dual(forest_plot_native, out_forest_native_png, out_forest_native_pdf, width = 11, height = 8.2)
 
-# 5b) forest plot: harmonized -1 IQR -> +1 IQR at p99
+# 5b) forest plot: harmonised -1 IQR -> +1 IQR at p99
 forest_iqr_plot <- ggplot(
   plot_dt,
   aes(x = cr_mod_iqr, y = heat_y, xmin = cr_mod_iqr_low, xmax = cr_mod_iqr_high)
