@@ -1,44 +1,16 @@
 # build_paris_arr_ndvi_metrics.R
-# compute NDVI-derived arrondissement metrics before
-#   build_paris_arr_greenness_metrics.R merges all greenness families
-
-#   Outputs from this script feed ndvi_* fields used in the
-#   _final_nativeheat_ghsgreen pipeline.
 #
-# Build NDVI metrics for Paris from JJAS 2014-2017 TIFFs:
-#   - ndvi_popw_ghs  : NDVI extracted to arrondissement and weighted with GHS POP
-#                      (same population source as gvi_popw_points and imu_*_popw_ghs)
-#   - ndvi_areaw_arr : NDVI extracted to arrondissement (area-weighted / unweighted mean)
-#   - ndvi_popw_imu  : NDVI extracted to IMU polygons, then IMU-pop weighted
-#                      to arrondissement (IMU support robustness)
-#   - ndvi_areaw_imu : NDVI extracted to IMU polygons, then area-weighted
-#                      to arrondissement (IMU support robustness)
+# Build NDVI arrondissement metrics from Copernicus CLMS 300m COGs
+# (JJAS 2014-2017). Run before build_paris_arr_greenness_metrics.R,
+# which merges the output into the unified greenness file.
 #
-# Design choice:
-#   - Keep "native NDVI" as main NDVI metric in the paper
-#   - Add population-harmonized NDVI with GHS POP at arrondissement level
-#   - Keep IMU-supported NDVI as support-sensitivity
+# Produces both GHS-POP weighted (main paper) and native (appendix):
+#   - ndvi_popw_ghs  : GHS-POP weighted (same pop source as GVI and IMU)
+#   - ndvi_areaw_arr : area-average (native/unweighted)
 #
-# Inputs:
-#   - cdse_ndvi_paris/paris_ndvi_2014_2017_cog_filelist.csv
-#   - cdse_ndvi_paris/ndvi300_paris_jjas_2014_2017_tifs/ndvi300_paris_YYYYMMDD.tif
-#     (JJAS local TIFFs; preferred)
-#   - GHS_POP_E2020_GLOBE_R2023A_4326_3ss_V1_0.tif
-#   - IMU polygons
-#   - local arrondissement shapefile
+# GHS-POP raster is reprojected to the NDVI grid using method="sum"
+# to conserve population counts.
 #
-# Optional:
-#   - If local clips are missing and download_missing = TRUE, uses AWS CLI to
-#     stream missing dates from CDSE object storage.
-#
-# Outputs:
-#   - paris_arr_ndvi_metrics.csv
-#   - paris_ndvi_arr_jjas_2014_2017_by_arr_date.csv
-#   - paris_ndvi_imu_jjas_2014_2017_by_imu.csv
-#   - paris_ndvi_imu_jjas_2014_2017_partial.csv (checkpoint for resume)
-#   - paris_ndvi_arr_jjas_2014_2017_partial.csv (checkpoint for resume)
-#   - paris_ndvi_imu_jjas_2014_2017_failed_dates.csv
-
 if (Sys.info()[["sysname"]] == "Darwin") {
   if (!nzchar(Sys.getenv("PROJ_LIB"))) Sys.setenv(PROJ_LIB = "/opt/homebrew/opt/proj/share/proj")
   if (!nzchar(Sys.getenv("GDAL_DATA"))) Sys.setenv(GDAL_DATA = "/opt/homebrew/opt/gdal/share/gdal")
@@ -53,7 +25,7 @@ library(lubridate)
 sf::sf_use_s2(TRUE)
 terraOptions(progress = 1)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative:   base_dir <- here::here()
 analysis_crs <- 2154
 
 # runtime controls

@@ -1,11 +1,13 @@
 # build_paris_daily_deaths_fullgrid.R
-# create the complete arrondissement-day mortality
-# panel used by both native and weighted heat-panel builders.
-# Repro note:
-#   This script should be run before build_paris_panel_deaths_heat_urbclim.R
-#   and build_paris_panel_deaths_heat_imuweighted.R.
-# Build Paris arrondissement-day deaths panel (PLACE OF RESIDENCE) from data.xlsx,
-# with a full 2008-01-01..2017-12-31 grid (zeros for missing arr-days).
+#
+# Create the complete arrondissement-day mortality panel (place of
+# residence) from data.xlsx. Produces a full 2008-01-01 to 2017-12-31
+# grid with zeros for missing arrondissement-days.
+#
+# Shared input for both the main paper heat panel
+# (build_paris_panel_deaths_heat_ghspopweighted_sumproj.R) and the
+# native appendix panel (build_paris_panel_deaths_heat_urbclim.R).
+# Run this script first.
 #
 # Outputs:
 #   - paris_daily_deaths_arr_residence_fullgrid_2008_2017.csv
@@ -17,7 +19,7 @@ library(data.table)
 library(lubridate)
 library(readxl)
 
-base_dir  <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir  <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # need to make it relative :   base_dir <- here::here()
 xlsx_path <- file.path(base_dir, "data.xlsx")
 
 paris_arr <- sprintf("751%02d", 1:20)

@@ -1,28 +1,23 @@
 # estimate_paris_baseline_cts_heat_metrics_rule1.R
-# Pipeline step:
-# Fit baseline heat-only CTS/DLNM models to recover MMT/p99/IQR per metric
-
-#   Keep CTS_TAG and RUN_TAG aligned to the target run, e.g.:
-#   - _final_nativeheat_ghsgreen
-#   - _final_ghsheat_ghsgreen
 #
-# Baseline Paris-paper-style CTS/DLNM for each heat metric:
-#   - t2m_min, t2m_mean, t2m_max
-#   - lst_min, lst_mean, lst_max
-#   - wbgt_min, wbgt_mean, wbgt_max
+# Fit baseline heat-only CTS/DLNM models to recover MMT, p99, and IQR
+# for each of the 9 heat metrics (T2M/LST/WBGT x min/mean/max).
+# Used for BOTH the main paper run (_rerun_rule1_sum_ghsheat_ghsgreen)
+# and the native appendix comparison — only the CTS input differs.
+#
+# Key methodological choice: approx(rule=1) returns NA outside the
+# observed range instead of extrapolating (rule=2). This is the
+# corrected version used for all final results.
 #
 # Model:
-#   conditional quasi-Poisson regression with
-#   - arrondissement-year-month strata (via gnm eliminate)
-#   - day of week
-#   - ns(day_of_season, 4 df) interacted with year
-#   - DLNM crossbasis:
-#       * exposure-response: natural cubic spline with 1 knot at p90
-#       * lag-response: integer lag 0-1
+#   Conditional quasi-Poisson (gnm with eliminate) on arrondissement-
+#   year-month strata, with day-of-week FE, ns(day_of_season, 4 df)
+#   interacted with year, and a DLNM crossbasis (ns with 1 knot at
+#   p90, integer lag 0-1).
 #
-# Outputs:
-#   - paris_baseline_heat_metric_summary.csv
-#   - paris_baseline_heat_metric_curves.csv
+# Outputs (tagged with RUN_TAG):
+#   - paris_baseline_heat_metric_summary{RUN_TAG}.csv
+#   - paris_baseline_heat_metric_curves{RUN_TAG}.csv
 
 library(data.table)
 library(lubridate)
@@ -30,8 +25,8 @@ library(splines)
 library(gnm)
 library(dlnm)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
-
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
+ 
 norm_tag <- function(x) {
   x <- trimws(x)
   if (!nzchar(x)) return("")

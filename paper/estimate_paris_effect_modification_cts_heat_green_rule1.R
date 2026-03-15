@@ -1,61 +1,30 @@
 # estimate_paris_effect_modification_cts_heat_green_rule1.R
-
-# Fit heat x greenness interaction CTS/DLNM models for all metric pairs
-
-#   Use matching CTS_TAG, BASELINE_TAG, and RUN_TAG for the target run, e.g.:
-#   - _final_nativeheat_ghsgreen
-#   - _final_ghsheat_ghsgreen
 #
-# Paris-paper-style CTS/DLNM effect-modification models:
-#   - 9 heat metrics:
-#       t2m_min, t2m_mean, t2m_max
-#       lst_min, lst_mean, lst_max
-#       wbgt_min, wbgt_mean, wbgt_max
-#   - greenness metrics available in CTS-ready data:
-#       * primary reporting set (handled downstream):
-#           gvi_mean_std_iqr
-#           ndvi_native_jjas_std_iqr
-#           imu_veg_total_std_iqr
-#       * robustness set:
-#           gvi_popw_points_std_iqr
-#           imu_veg_total_popw_std_iqr
-#           imu_high_std_iqr
-#           imu_low_std_iqr
-#           imu_high_popw_std_iqr
-#           imu_low_popw_std_iqr
-#           gvi_mean_std_iqr
-#           gvi_areaw_imu_std_iqr
-#           gvi_popw_imu_std_iqr
-#           ndvi_native_all_std_iqr
-#           ndvi_popw_imu_std_iqr
-#           ndvi_areaw_imu_std_iqr
+# Fit heat x greenness interaction CTS/DLNM models for all 9 heat metrics
+# crossed with every available IQR-standardised greenness metric.
+# Used for BOTH the main paper run (_rerun_rule1_sum_ghsheat_ghsgreen)
+# and the native appendix comparison — only the CTS and baseline inputs differ.
+#
+# Key methodological choices:
+#   - approx(rule=1): NA outside observed range (corrected version)
+#   - Linear interaction: cbg = cbh * greenness_std_iqr
+#   - Primary contrast: p10 -> p90 in standardised greenness at heat p99
+#
+# The script fits ALL available green metrics in the CTS file. Downstream
+# summarize_paris_effectmod_results.R separates them into:
+#   - GHS-POP weighted set (main paper): gvi_popw_points, ndvi_popw_ghs,
+#     imu_veg_total_popw_ghs, imu_high_popw_ghs, imu_low_popw_ghs
+#   - Native/unweighted set (appendix): gvi_mean, ndvi_native_jjas, imu_veg_total
 #
 # Model:
-#   conditional quasi-Poisson regression with
-#   - arrondissement-year-month strata (via gnm eliminate)
-#   - day of week
-#   - ns(day_of_season, 4 df) interacted with year
-#   - DLNM crossbasis for heat
-#   - linear interaction between heat crossbasis and greenness metric
+#   Conditional quasi-Poisson (gnm with eliminate) on arrondissement-
+#   year-month strata, with day-of-week FE, ns(day_of_season, 4 df)
+#   interacted with year, DLNM crossbasis for heat (ns, 1 knot at p90,
+#   integer lag 0-1), and linear interaction with greenness.
 #
-# Main output:
-#   Effect modification (% change in RR) for harmonized greenness contrasts
-#   at:
-#     - heat metric p99
-#     - MMT + 1 heat-IQR
-#     - MMT + 2 heat-IQR
-#   Curves are exported for:
-#     - low/high greenness at -1/+1 IQR (sensitivity)
-#     - low/high greenness at p10/p90 (primary visual contrast)
-#
-# Outputs:
-#   - paris_effectmod_heat_green_summary.csv
-#   - paris_effectmod_heat_green_curves.csv
-#
-# Notes:
-#   - Uses MMT / p99 / IQR from the baseline script output
-#   - Saves incrementally after each successful model
-#   - Negative %CR_mod means greener districts have LOWER heat-mortality risk
+# Outputs (tagged with RUN_TAG):
+#   - paris_effectmod_heat_green_summary{RUN_TAG}.csv
+#   - paris_effectmod_heat_green_curves{RUN_TAG}.csv
 
 library(data.table)
 library(lubridate)
@@ -63,7 +32,7 @@ library(splines)
 library(gnm)
 library(dlnm)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
 
 norm_tag <- function(x) {
   x <- trimws(x)

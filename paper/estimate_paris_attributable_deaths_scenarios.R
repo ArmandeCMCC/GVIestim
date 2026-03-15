@@ -1,43 +1,27 @@
 # estimate_paris_attributable_deaths_scenarios.R
-# run one attributable-burden scenario spec (one heat metric x one
-#      greenness metric) and export row/arrondissement/summary outputs
-
-#   Scenarios are run repeatedly under a chosen RUN_TAG, e.g.:
-#   - RUN_TAG=_final_nativeheat_ghsgreen
-#   - RUN_TAG=_final_ghsheat_ghsgreen
-
-# Policy-framing / scenario script for Paris heat × greenness CTS/DLNM results.
-
-# Purpose:
-#   For ONE selected heat metric and ONE selected greenness metric,
-#   refit the Paris-paper-style effect-modification model and estimate:
-#     - observed heat-attributable deaths
-#     - counterfactual heat-attributable deaths under greener scenarios
-#     - avoided heat-attributable deaths
-
-# Default selection:
-#   heat  = wbgt_mean
-#   green = imu_high_popw_std_iqr
-
-# Scenarios:
-#   1) max_all        : all arrondissements set to observed max greenness
-#   2) p90_floor      : all arrondissements below p90 are raised to p90
-#   3) plus1iqr_cap   : each arrondissement gets +1 greenness IQR, capped at max
-
-# Attribution threshold:
-#   By default, heat-attributable deaths are counted only for temperatures above
-#   the model-specific minimum mortality temperature (MMT).
-
-# Inputs:
-#   - paris_cts_ready_jjas_2008_2017.csv
-#   - paris_baseline_heat_metric_summary.csv
-
-# Outputs:
-#   - paris_attr_scenario_rowlevel.csv
-#   - paris_attr_scenario_by_arr.csv
-#   - paris_attr_scenario_summary.csv
-# Summary outputs also include:
-#   - ad_obs/ad_scn/ad_avoided per 100,000 residents per JJAS season
+#
+# Run ONE attributable-burden scenario (one heat x one green metric).
+# Used for both the main paper run (_rerun_rule1_sum_ghsheat_ghsgreen)
+# and the native appendix comparison, controlled by RUN_TAG / CTS_TAG.
+#
+# For each selected heat x green pair, refits the effect-modification
+# model and estimates observed, counterfactual, and avoided heat-
+# attributable deaths under three greening scenarios:
+#   1) max_all      — all arrondissements set to observed max greenness
+#   2) p90_floor    — all below p90 raised to p90
+#   3) plus1iqr_cap — each gets +1 IQR, capped at observed max
+#
+# Uses rule=1 in approx() for consistency with baseline and effectmod.
+# Attribution threshold defaults to MMT.
+#
+# Inputs (tagged with CTS_TAG / BASELINE_TAG):
+#   - paris_cts_ready_jjas_2008_2017{CTS_TAG}.csv
+#   - paris_baseline_heat_metric_summary{BASELINE_TAG}.csv
+#
+# Outputs (tagged with RUN_TAG):
+#   - paris_attr_scenario_rowlevel_<stub>{RUN_TAG}.csv
+#   - paris_attr_scenario_by_arr_<stub>{RUN_TAG}.csv
+#   - paris_attr_scenario_summary_<stub>{RUN_TAG}.csv
 
 library(data.table)
 library(lubridate)
@@ -45,7 +29,7 @@ library(splines)
 library(gnm)
 library(dlnm)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
 
 norm_tag <- function(x) {
   x <- trimws(x)

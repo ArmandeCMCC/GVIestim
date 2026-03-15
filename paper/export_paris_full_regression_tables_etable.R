@@ -3,7 +3,7 @@
 # Full regression tables using fixest::etable
 # - One table per heat metric
 # - Three columns per table: GVI, NDVI, IMU total
-# - Run-tag aware (default: final_ghsheat_ghsgreen)
+# - Run-tag aware
 
 library(data.table)
 library(lubridate)
@@ -11,7 +11,7 @@ library(splines)
 library(dlnm)
 library(fixest)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
 
 norm_tag <- function(x) {
   x <- trimws(x)
@@ -20,7 +20,7 @@ norm_tag <- function(x) {
   x
 }
 
-run_tag <- norm_tag(Sys.getenv("RUN_TAG", "final_ghsheat_ghsgreen"))
+run_tag <- norm_tag(Sys.getenv("RUN_TAG", "rerun_rule1_sum_ghsheat_ghsgreen"))
 cts_tag <- norm_tag(Sys.getenv("CTS_TAG", run_tag))
 
 in_cts <- file.path(base_dir, paste0("paris_cts_ready_jjas_2008_2017", cts_tag, ".csv"))

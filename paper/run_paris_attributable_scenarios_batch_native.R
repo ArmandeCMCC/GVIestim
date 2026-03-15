@@ -1,12 +1,13 @@
-# run_paris_attributable_scenarios_batch.R
+# run_paris_attributable_scenarios_batch_native.R
 #
-# MAIN PAPER: batch-run attributable-burden scenarios using GHS-POP
-# pop-weighted heat and green metrics (tag: _rerun_rule1_sum_ghsheat_ghsgreen).
+# APPENDIX comparison: native (area-average) heat + native (unweighted) green.
+# Counterpart of run_paris_attributable_scenarios_batch.R (which uses
+# GHS-POP pop-weighted heat and green metrics reported in the main paper).
+# Both scripts must use identical methodology (rule=1, same DLNM spec)
+# so that the only difference is the weighting of heat and greenness inputs.
 #
-# Specifications: 3 heat (wbgt_mean, t2m_mean, lst_max) x 4 GHS-weighted green
-# (gvi_popw_points, ndvi_popw_ghs, imu_veg_total_popw_ghs, imu_low_popw_ghs),
-# all at MMT threshold. Uses rule=1 in approx() for consistency with
-# baseline and effect-modification estimation scripts.
+# Specifications: 3 heat (wbgt_mean, t2m_mean, lst_max) x 3 native green
+# (gvi_mean, ndvi_native_jjas, imu_veg_total), all at MMT threshold.
 #
 # Outputs for each spec (tagged with RUN_TAG):
 #   - paris_attr_scenario_rowlevel_<stub>{RUN_TAG}.csv
@@ -19,7 +20,7 @@ library(splines)
 library(gnm)
 library(dlnm)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
 
 norm_tag <- function(x) {
   x <- trimws(x)
@@ -39,14 +40,16 @@ baseline_tag <- norm_tag(Sys.getenv("BASELINE_TAG", run_tag))
 in_cts  <- tag_file("paris_cts_ready_jjas_2008_2017", cts_tag)
 in_base <- tag_file("paris_baseline_heat_metric_summary", baseline_tag)
 
-cat("\nAttributable batch config:\n")
+cat("\nAttributable native-batch config:\n")
 cat(" - CTS_TAG:", ifelse(nzchar(cts_tag), cts_tag, "<none>"), "\n")
 cat(" - BASELINE_TAG:", ifelse(nzchar(baseline_tag), baseline_tag, "<none>"), "\n")
 cat(" - RUN_TAG:", ifelse(nzchar(run_tag), run_tag, "<none>"), "\n")
 cat(" - input CTS:", in_cts, "\n")
 cat(" - input baseline:", in_base, "\n")
 
-# 0) load once
+# ------------------------------------------------------------------------------
+# 0) Load once
+# ------------------------------------------------------------------------------
 dt <- fread(in_cts)
 base <- fread(in_base)
 
@@ -58,10 +61,12 @@ if (length(missing_req) > 0) {
   stop("Missing required columns in CTS-ready file: ", paste(missing_req, collapse = ", "))
 }
 
-# restrict to JJAS just in case
+# Restrict to JJAS just in case
 dt <- dt[month(date) %in% 6:9]
 
-# user-set denominator for standardized impact metrics
+# ------------------------------------------------------------------------------
+# User-set denominator for standardized impact metrics
+# ------------------------------------------------------------------------------
 city_population_ref <- 2200000
 n_summers <- uniqueN(year(dt$date))
 
@@ -87,7 +92,9 @@ if ("year" %in% names(dt)) {
   stop("Need either year or year_f in CTS-ready file.")
 }
 
-# 1) helpers
+# ------------------------------------------------------------------------------
+# 1) Helpers
+# ------------------------------------------------------------------------------
 resolve_block_names <- function(fit, object_name, mat_obj) {
   beta_names <- names(coef(fit))
   cn <- colnames(mat_obj)
@@ -220,7 +227,9 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
   V_hg <- V[h_names, g_names, drop = FALSE]
   V_gh <- V[g_names, h_names, drop = FALSE]
   
-  # arrondissement-level greenness scenarios
+  # --------------------------------------------------------------------------
+  # Arrondissement-level greenness scenarios
+  # --------------------------------------------------------------------------
   arr_green <- unique(sub[, .(
     arr,
     green_raw_obs = get(selected_green_raw),
@@ -267,7 +276,9 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
     )]
   ), use.names = TRUE)
   
+  # --------------------------------------------------------------------------
   # RR prediction for arbitrary greenness level
+  # --------------------------------------------------------------------------
   cp_cache <- new.env(parent = emptyenv())
   
   get_cp_for_g <- function(g_value_std) {
@@ -313,7 +324,9 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
     out
   }
   
-  # expand to scenario panel and compute attributable deaths
+  # --------------------------------------------------------------------------
+  # Expand to scenario panel and compute attributable deaths
+  # --------------------------------------------------------------------------
   row_dt <- merge(
     sub[, .(
       arr, date, deaths,
@@ -357,7 +370,9 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
   row_dt[, ad_scn := af_scn * deaths]
   row_dt[, ad_avoided := ad_obs - ad_scn]
   
-  # summaries
+  # --------------------------------------------------------------------------
+  # Summaries
+  # --------------------------------------------------------------------------
   by_arr <- row_dt[, .(
     deaths_total = sum(deaths, na.rm = TRUE),
     deaths_hot_days = sum(deaths[above_threshold], na.rm = TRUE),
@@ -441,66 +456,58 @@ run_one_spec <- function(selected_heat, selected_green_std, threshold_mode, stub
   invisible(summary_dt)
 }
 
-# 2) batch specifications
+# ------------------------------------------------------------------------------
+# 2) Batch specifications
+# ------------------------------------------------------------------------------
 specs <- data.table(
   selected_heat = c(
     "wbgt_mean",
+    "wbgt_mean",
+    "wbgt_mean",
+    "t2m_mean",
     "t2m_mean",
     "t2m_mean",
     "lst_max",
-    "wbgt_mean",
     "lst_max",
-    "wbgt_mean",
-    "t2m_mean",
-    "lst_max",
-    "wbgt_mean",
-    "t2m_mean",
     "lst_max"
   ),
   selected_green_std = c(
-    "imu_high_popw_ghs_std_iqr",
-    "imu_veg_total_popw_ghs_std_iqr",
-    "gvi_popw_points_std_iqr",
-    "imu_high_popw_ghs_std_iqr",
-    "gvi_popw_points_std_iqr",
-    "gvi_popw_points_std_iqr",
-    "ndvi_popw_ghs_std_iqr",
-    "ndvi_popw_ghs_std_iqr",
-    "ndvi_popw_ghs_std_iqr",
-    "imu_low_popw_ghs_std_iqr",
-    "imu_low_popw_ghs_std_iqr",
-    "imu_low_popw_ghs_std_iqr"
+    "gvi_mean_std_iqr",
+    "ndvi_native_jjas_std_iqr",
+    "imu_veg_total_std_iqr",
+    "gvi_mean_std_iqr",
+    "ndvi_native_jjas_std_iqr",
+    "imu_veg_total_std_iqr",
+    "gvi_mean_std_iqr",
+    "ndvi_native_jjas_std_iqr",
+    "imu_veg_total_std_iqr"
   ),
   threshold_mode = c(
     "mmt",
     "mmt",
     "mmt",
-    "mmt",
-    "mmt",
-    "mmt",
-    "mmt",
-    "mmt",
-    "mmt",
+    "22",
+    "22",
+    "22",
     "mmt",
     "mmt",
     "mmt"
   ),
   stub = c(
-    "wbgtmean_imuhighpopwghs_mmt",
-    "t2mmean_imuvegtotalpopwghs_mmt",
-    "t2mmean_gvipopwpoints_mmt",
-    "lstmax_imuhighpopwghs_mmt",
-    "wbgtmean_gvipopwpoints_mmt",
-    "lstmax_gvipopwpoints_mmt",
-    "wbgtmean_ndvipopwghs_mmt",
-    "t2mmean_ndvipopwghs_mmt",
-    "lstmax_ndvipopwghs_mmt",
-    "wbgtmean_imulowpopwghs_mmt",
-    "t2mmean_imulowpopwghs_mmt",
-    "lstmax_imulowpopwghs_mmt"
+    "wbgtmean_gvimean_mmt_native",
+    "wbgtmean_ndvinativejjas_mmt_native",
+    "wbgtmean_imuvegtotal_mmt_native",
+    "t2mmean_gvimean_p22_native",
+    "t2mmean_ndvinativejjas_p22_native",
+    "t2mmean_imuvegtotal_p22_native",
+    "lstmax_gvimean_mmt_native",
+    "lstmax_ndvinativejjas_mmt_native",
+    "lstmax_imuvegtotal_mmt_native"
   )
 )
-# 3) run all
+# ------------------------------------------------------------------------------
+# 3) Run all
+# ------------------------------------------------------------------------------
 results <- vector("list", nrow(specs))
 
 for (i in seq_len(nrow(specs))) {

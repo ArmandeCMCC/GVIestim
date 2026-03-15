@@ -25,7 +25,7 @@ norm_tag <- function(x) {
   x
 }
 
-run_tag <- norm_tag(Sys.getenv("RUN_TAG", "final_ghsheat_ghsgreen"))
+run_tag <- norm_tag(Sys.getenv("RUN_TAG", "rerun_rule1_sum_ghsheat_ghsgreen"))
 
 in_summary <- file.path(base_dir, paste0("paris_effectmod_heat_green_summary", run_tag, ".csv"))
 in_minmax  <- file.path(base_dir, paste0("paris_effectmod_paper_table_p99_minmax", run_tag, ".csv"))

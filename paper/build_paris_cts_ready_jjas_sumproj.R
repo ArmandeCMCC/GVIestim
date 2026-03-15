@@ -1,36 +1,30 @@
-# build_paris_cts_ready_jjas.R
+# build_paris_cts_ready_jjas_sumproj.R
 # Merge deaths + heat panel + greenness into one CTS-ready JJAS dataset
-
-#   Set HEAT_SUPPORT and RUN_TAG explicitly, e.g.:
-#   - HEAT_SUPPORT=native      RUN_TAG=_final_nativeheat_ghsgreen
-#   - HEAT_SUPPORT=ghspopw     RUN_TAG=_final_ghsheat_ghsgreen
-#   - HEAT_SUPPORT=ghspopw_sum RUN_TAG=_sens_sumproj_rule1_ghsheat_ghsgreen
 #
-# merge:
-#   - paris_panel_residence_urbclim_daily_2008_2017_JJAS.csv
-#   - paris_arr_greenness_metrics.csv
+# Final run configuration:
+#   HEAT_SUPPORT=ghspopw_sum  RUN_TAG=_rerun_rule1_sum_ghsheat_ghsgreen
 #
-# create CTS-ready variables for Paris-paper-style analysis:
-#   - district-year-month strata
-#   - day of week
-#   - day of summer season
-#   - factor/id helpers
-#   - IQR-standardized greenness metrics
+# Inputs:
+#   - Heat panel built with GHS-POP sum-preserving reprojection
+#     (paris_panel_residence_urbclim_daily_2008_2017_ghspopweighted_sumproj_JJAS.csv)
+#   - Arrondissement greenness metrics (paris_arr_greenness_metrics.csv)
 #
-# IMPORTANT:
-#   This script does NOT yet create MMT-centered heat variables.
-#   That should be done separately for each heat metric after fitting the
-#   baseline DLNM/CTS model for that metric.
+# This script merges the heat and greenness panels, creates CTS-ready
+# time variables (district-year-month strata, day of week, day of season),
+# and IQR-standardises all greenness metrics across the 20 arrondissements.
 #
-# Outputs:
-#   - paris_cts_ready_jjas_2008_2017.csv
-#   - paris_greenness_metric_summary.csv
-#   - paris_heat_metric_summary.csv
+# MMT-centered heat variables are NOT created here; they depend on the
+# baseline DLNM fit and are handled downstream.
+#
+# Outputs (tagged with RUN_TAG):
+#   - paris_cts_ready_jjas_2008_2017{RUN_TAG}.csv
+#   - paris_greenness_metric_summary{RUN_TAG}.csv
+#   - paris_heat_metric_summary{RUN_TAG}.csv
 
 library(data.table)
 library(lubridate)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative:   base_dir <- here::here()
 
 norm_tag <- function(x) {
   x <- trimws(x)
@@ -44,11 +38,11 @@ tag_file <- function(stem, tag, ext = ".csv") {
 }
 
 # HEAT_SUPPORT:
-#   - popw     : use Paris-style IMU-population-weighted heat panel (default)
-#   - native   : use native arrondissement-area heat panel
-#   - ghspopw  : use direct arrondissement GHS-POP-weighted heat panel
-#   - ghspopw_sum : GHS-POP-weighted panel built with sum-preserving reprojection
-heat_support <- tolower(trimws(Sys.getenv("HEAT_SUPPORT", "popw")))
+#   - ghspopw_sum : GHS-POP-weighted panel built with sum-preserving reprojection (default)
+#   - ghspopw  : GHS-POP-weighted panel with bilinear reprojection
+#   - native   : native arrondissement-area heat panel
+#   - popw     : IMU-population-weighted heat panel
+heat_support <- tolower(trimws(Sys.getenv("HEAT_SUPPORT", "ghspopw_sum")))
 if (heat_support %in% c("popw", "weighted", "imuweighted")) {
   panel_file <- "paris_panel_residence_urbclim_daily_2008_2017_imuweighted_JJAS.csv"
   default_run_tag <- ""

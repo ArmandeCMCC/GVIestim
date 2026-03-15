@@ -1,8 +1,7 @@
 # plot_paris_effectmod_results.R
-# Produce main manuscript figures (forest plots + curve plots)
-
-#   Final manuscript run plots were generated from _final_nativeheat_ghsgreen
-#   summary/curve files.
+#
+# Produce main manuscript figures (forest plots + curve plots).
+# Main paper run tag: _rerun_rule1_sum_ghsheat_ghsgreen.
 #
 # Clean plotting / results-packaging script for Paris heat × greenness CTS/DLNM
 # results, updated for recent ggplot2 versions.
@@ -40,7 +39,7 @@
 library(data.table)
 library(ggplot2)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative 
 
 norm_tag <- function(x) {
   x <- trimws(x)
@@ -58,7 +57,7 @@ tag_file <- function(stem, tag, ext = ".csv") {
   file.path(base_dir, paste0(stem, tag, ext))
 }
 
-run_tag <- norm_tag(Sys.getenv("RUN_TAG", ""))
+run_tag <- norm_tag(Sys.getenv("RUN_TAG", "rerun_rule1_sum_ghsheat_ghsgreen"))
 harm_tag <- norm_tag(Sys.getenv("HARM_TAG", run_tag))
 curves_tag <- norm_tag(Sys.getenv("CURVES_TAG", run_tag))
 

@@ -1,14 +1,21 @@
 # build_paris_arr_greenness_metrics.R
-# Pipeline step:
-#   1) Build arrondissement-level greenness inputs used by downstream CTS scripts.
-# Repro note:
-#   For the final public run, this script was used before
-#   build_paris_cts_ready_jjas.R with RUN_TAG=_final_nativeheat_ghsgreen.
-# Build arrondissement-level greenness table for Paris:
-#   - IMU high / low / total vegetation (area-weighted)
-#   - IMU high / low / total vegetation (population-weighted)
-#   - GVI mean and point count from final processed GVI CSV
-
+#
+# Build arrondissement-level greenness metrics from GVI points, IMU
+# polygons, and NDVI summaries. Produces BOTH the GHS-POP pop-weighted
+# metrics (main paper) and the native/unweighted metrics (appendix),
+# all in a single output file.
+#
+# Main paper metrics (GHS-POP weighted):
+#   - gvi_popw_points  : GVI point-level weighted by GHS-POP pixel value
+#   - ndvi_popw_ghs    : NDVI (from build_paris_arr_ndvi_metrics.R)
+#   - imu_*_popw_ghs   : IMU vegetation weighted by GHS-POP within
+#                         arrondissement-allocated IMU polygon fragments
+#
+# Native/appendix metrics (area-weighted or unweighted):
+#   - gvi_mean         : simple point mean per arrondissement
+#   - ndvi_native_jjas : area-average NDVI
+#   - imu_veg_total    : area-weighted IMU vegetation
+#
 # Output:
 #   - paris_arr_greenness_metrics.csv
 
@@ -24,13 +31,13 @@ library(exactextractr)
 
 sf::sf_use_s2(TRUE)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative:   base_dir <- here::here()
 analysis_crs <- 2154   # Lambert-93
 
 # 0) Paths
 gvi_csv_path <- file.path(base_dir, "gvi_356_cities.csv")
 ndvi_native_path <- file.path(base_dir, "paris_ndvi_2014_2017_by_arr_mean.csv")
-ndvi_imu_path <- file.path(base_dir, "paris_arr_ndvi_metrics.csv")  # optional robustness file
+ndvi_imu_path <- file.path(base_dir, "paris_arr_ndvi_metrics.csv")  
 
 imu_candidates <- c(
   file.path(base_dir, "Îlots_morphologiques_urbains_d_Île-de-France.shp"),
@@ -68,9 +75,8 @@ if (is.na(pop_rast_path)) {
   stop("No population raster found for point weighting. Put GHS_POP_E2020_GLOBE_R2023A_4326_3ss_V1_0.tif in base_dir or working directory.")
 }
 pop_rast <- rast(pop_rast_path)
-# ------------------------------------------------------------------------------
+
 # 0b) Optional NDVI inputs
-# ------------------------------------------------------------------------------
 ndvi_native <- NULL
 if (file.exists(ndvi_native_path)) {
   ndvi_native <- fread(ndvi_native_path)
@@ -103,9 +109,7 @@ if (file.exists(ndvi_imu_path)) {
   setorder(ndvi_imu, arr)
 }
 
-# ------------------------------------------------------------------------------
 # helper
-# ------------------------------------------------------------------------------
 safe_wmean <- function(x, w) {
   ok <- is.finite(x) & is.finite(w) & w > 0
   if (!any(ok)) return(NA_real_)
@@ -120,9 +124,7 @@ safe_share_nonmissing <- function(x, w) {
   sum(w[ok_w & ok_x], na.rm = TRUE) / denom
 }
 
-# ------------------------------------------------------------------------------
-# 1) Read Paris arrondissement polygons (local frozen file)
-# ------------------------------------------------------------------------------
+# 1) Read Paris arrondissement polygons 
 arr_shp_candidates <- c(
   file.path(base_dir, "arrondissements.shp"),
   file.path(base_dir, "NDVI_Paris_2014_2017", "_tmp_paris_shp", "arrondissements.shp")
@@ -147,9 +149,7 @@ stopifnot(nrow(arr_sf) == 20)
 arr_sf_prj <- st_transform(arr_sf, analysis_crs)
 arr_sf_prj <- st_make_valid(arr_sf_prj)
 
-# ------------------------------------------------------------------------------
 # 2) Read IMU and prepare vegetation variables
-# ------------------------------------------------------------------------------
 imu <- imu_pick$data
 names(imu) <- tolower(names(imu))
 
@@ -204,9 +204,7 @@ imu_prj$imu_area <- as.numeric(st_area(imu_prj))
 # Stable polygon id for downstream joins
 imu_prj$imu_id <- seq_len(nrow(imu_prj))
 
-# ------------------------------------------------------------------------------
 # 3) Allocate IMU polygons to arrondissements by area intersection
-# ------------------------------------------------------------------------------
 cat("Building IMU x arrondissement area intersections...\n")
 
 imu_prj <- st_make_valid(imu_prj)
@@ -283,11 +281,9 @@ imu_arr <- imu_poly_dt[, .(
 
 setorder(imu_arr, arr)
 
-# ------------------------------------------------------------------------------
 # 4) GVI aggregation
 #    4A) keep legacy arrondissement point-mean GVI
-#    4B) NEW: harmonized GVI on IMU support, then area/pop aggregation to arr
-# ------------------------------------------------------------------------------
+#    4B) + harmonised GVI on IMU support, then area/pop aggregation to arr
 cat("Reading GVI CSV...\n")
 gvi <- fread(gvi_csv_path, showProgress = TRUE)
 names(gvi) <- tolower(names(gvi))
@@ -320,7 +316,7 @@ gvi_sf_prj$pt_pop_ghs <- terra::extract(pop_rast, vect(gvi_sf_wgs))[, 2]
 gvi_sf_prj$pt_pop_ghs <- suppressWarnings(as.numeric(gvi_sf_prj$pt_pop_ghs))
 gvi_sf_prj$pt_pop_ghs[!is.finite(gvi_sf_prj$pt_pop_ghs) | gvi_sf_prj$pt_pop_ghs < 0] <- NA_real_
 
-# ---- 4A) legacy arrondissement-level point mean (keep for robustness)
+# 4A) legacy arrondissement-level point mean (keep for robustness)
 gvi_join_arr <- st_join(gvi_sf_prj, arr_sf_prj["arr"], left = FALSE)
 
 gvi_arr_legacy <- as.data.table(st_drop_geometry(gvi_join_arr))[, .(
@@ -330,7 +326,7 @@ gvi_arr_legacy <- as.data.table(st_drop_geometry(gvi_join_arr))[, .(
 
 setorder(gvi_arr_legacy, arr)
 
-# ---- 4B) NEW PRIMARY: true point-level population-weighted GVI
+# 4B) NEW PRIMARY: true point-level population-weighted GVI
 # Join points to arrondissements and weight by point-level GHS population
 gvi_join_arr_pop <- st_join(
   gvi_sf_prj[, c("gvi", "pt_pop_ghs")],
@@ -348,7 +344,7 @@ gvi_arr_pointpopw <- as.data.table(st_drop_geometry(gvi_join_arr_pop))[, .(
 
 setorder(gvi_arr_pointpopw, arr)
 
-# ---- 4C) HARMONIZATION ROBUSTNESS: GVI -> IMU polygon mean -> arrondissement
+# 4C) HARMONISATION ROBUSTNESS: GVI -> IMU polygon mean -> arrondissement
 gvi_join_imu <- st_join(
   gvi_sf_prj,
   imu_prj[, "imu_id"],
@@ -383,9 +379,7 @@ gvi_arr_harmonized <- imu_gvi_dt[, .(
 
 setorder(gvi_arr_harmonized, arr)
 
-# ------------------------------------------------------------------------------
 # 5) Merge and save
-# ------------------------------------------------------------------------------
 out <- data.table(arr = paris_arr)
 out <- merge(out, imu_arr, by = "arr", all.x = TRUE)
 out <- merge(out, gvi_arr_legacy, by = "arr", all.x = TRUE)
@@ -403,9 +397,7 @@ fwrite(out, out_path)
 
 cat("\nSaved:\n -", out_path, "\n")
 
-# ------------------------------------------------------------------------------
-# 6) Quick sanity checks
-# ------------------------------------------------------------------------------
+# 6) Sanity checks
 cat("\nSummary ranges:\n")
 print(out[, .(
   imu_high_min = min(imu_high, na.rm = TRUE),

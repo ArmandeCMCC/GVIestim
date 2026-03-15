@@ -1,10 +1,7 @@
 # summarize_paris_scenario_comparison.R
-# Pipeline step:
+#
 # Combine all scenario summary files into one comparison table for paper
-#      reporting and ranking
-
-#   Can be run after single or batch scenario executions; for the final draft,
-#   tagged files from _final_nativeheat_ghsgreen were the reference.
+# reporting and ranking. Main paper run tag: _rerun_rule1_sum_ghsheat_ghsgreen.
 #
 # Stack multiple Paris attributable-deaths scenario runs into one
 # publication-ready comparison table.
@@ -33,7 +30,7 @@
 
 library(data.table)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative
 
 norm_tag <- function(x) {
   x <- trimws(x)

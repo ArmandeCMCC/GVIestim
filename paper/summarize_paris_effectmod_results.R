@@ -1,8 +1,7 @@
 # summarize_paris_effectmod_results.R
-# Convert raw model outputs into paper-ready estimands/tables (p10->p90,
-#      -1->+1 IQR, min->max).
-
-#   Final manuscript run summarised files tagged _final_nativeheat_ghsgreen.
+#
+# Convert raw effectmod outputs into paper-ready estimands/tables.
+# Main paper run tag: _rerun_rule1_sum_ghsheat_ghsgreen.
 #
 # Post-process Paris heat × greenness effect-modification results
 

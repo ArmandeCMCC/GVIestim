@@ -1,13 +1,15 @@
 # build_paris_panel_deaths_heat_ghspopweighted_sumproj.R
-
-#   Upstream prep: build a direct arrondissement-day heat panel where UrbClim
-#   heat metrics are population-weighted using GHS-POP (no IMU intermediary)
-
-# Method summary:
-#   - Read UrbClim daily NetCDF layers (T2M/LST/WBGT x min/mean/max)
-#   - For each file, extract arrondissement-level weighted means with:
-#       weights = GHS-POP raster reprojected to the UrbClim grid
-#   - Merge with arrondissement-day deaths (residence)
+#
+# MAIN PAPER heat panel. Build the arrondissement-day heat exposure panel
+# where UrbClim metrics are population-weighted using GHS-POP with
+# sum-preserving reprojection (method="sum"). This ensures population
+# counts are conserved when moving from the GHS-POP grid to the UrbClim
+# grid, unlike bilinear interpolation which can drop arrondissements
+# with low population coverage (e.g. 12th/16th with Bois de Vincennes/
+# Boulogne).
+#
+# For the appendix native comparison, use build_paris_panel_deaths_heat_urbclim.R
+# which extracts simple area-average heat (no population weighting).
 #
 # Outputs:
 #   - paris_panel_residence_urbclim_daily_2008_2017_ghspopweighted_sumproj.csv
@@ -27,7 +29,7 @@ library(ncdf4)
 
 terra::gdalCache(4000)
 
-base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper"
+base_dir <- "/Users/armandeaboudrar-meda/Desktop/GVIestim/paper" # relative:   base_dir <- here::here()
 
 deaths_full_path <- file.path(base_dir, "paris_daily_deaths_arr_residence_fullgrid_2008_2017.csv")
 arr_shp_candidates <- c(
@@ -124,11 +126,11 @@ extract_arr_daily_popw <- function(nc_path, value_name, arr_polygons_3035, pop_w
   if (is.null(dts)) stop("No time dimension detected in: ", nc_path)
   names(r) <- format(dts, "%Y-%m-%d")
 
-  # Reproject population counts onto the UrbClim grid using sum-preserving transfer.
+  # Reproject population counts onto the UrbClim grid using sum-preserving transfer (not BILINEAR!!)
   w <- project(pop_weights_rast, r[[1]], method = "sum")
-  # Zero-weight (not NA) for unpopulated cells: exact_extract's built-in
+  # Zero-weight (not NA) for unpopulated cells: exact_extract's built-in => otherwise drops arrondissements (12 and 16)
   # "weighted_mean" does NOT skip NA weights, so NA here would propagate NaN
-  # for any polygon overlapping unpopulated cells (e.g. Bois de Vincennes/Boulogne).
+  # for any polygon overlapping unpopulated cells (e.g. Bois de Vincennes/Boulogne)
   w[w <= 0] <- 0
 
   vals <- exact_extract(r, arr_polygons_3035, "weighted_mean", weights = w)
