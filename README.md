@@ -225,7 +225,6 @@ RUN_TAG=$TAG Rscript export_paris_full_regression_tables_etable.R
 ## Key modeling choices
 
 All modeling choices follow [Achebak et al. (2026)](https://doi.org/10.1038/s42949-025-00334-5).
-Detailed "why" comments are in the estimation scripts; a summary follows.
 
 | Choice | Value | Rationale |
 |--------|-------|-----------|
