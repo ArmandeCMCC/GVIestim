@@ -275,3 +275,5 @@ All modeling choices follow [Achebak et al. (2026)](https://doi.org/10.1038/s429
 | 16 | `plot_paris_weighting_contrasts.R` | Pop-weighted vs native comparison figure |
 | 17 | `export_paris_appendix_effectmod_tables.R` | Appendix LaTeX effect-modification tables |
 | 18 | `export_paris_full_regression_tables_etable.R` | Full regression coefficient tables (fixest/etable) |
+| 19 | `plot_paris_weighted_vs_native_comparison.R` | Generates figs/paris_weighted_vs_native_forest.png |
+| 20 | `plot_paris_maps_descriptive.R` | Generates descriptive maps of Paris |
