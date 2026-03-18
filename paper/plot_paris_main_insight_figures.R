@@ -1,7 +1,7 @@
 # plot_paris_main_insight_figures.R
 #
 # Main paper figures: compact exposure-response curves, direct
-# contrasts (GVI vs NDVI, GVI vs IMU total), and burden heatmap.
+# contrasts (GVI vs NDVI, GVI vs IMU total), and burden heatmap
 # Default RUN_TAG: _rerun_rule1_sum_ghsheat_ghsgreen.
 #
 # Inputs (RUN_TAG-specific):
@@ -9,12 +9,6 @@
 #   - paris_effectmod_heat_green_curves{RUN_TAG}.csv
 #   - paris_attr_scenario_keytable{RUN_TAG}.csv
 #
-# Outputs:
-#   - figs/paris_curves_effectmod_compact_main{RUN_TAG}.png/.pdf
-#   - figs/paris_curves_effectmod_compact_strong{RUN_TAG}.png/.pdf
-#   - figs/paris_effectmod_direct_contrasts{RUN_TAG}.png/.pdf
-#   - paris_effectmod_direct_contrasts{RUN_TAG}.csv
-#   - figs/paris_burden_key_twopanel{RUN_TAG}.png/.pdf
 
 suppressPackageStartupMessages({
   library(data.table)
@@ -46,7 +40,7 @@ save_plot_dual <- function(plot_obj, png_path, pdf_path, width, height, dpi = 32
   ggsave(pdf_path, plot_obj, width = width, height = height)
 }
 
-# Config
+# config
 run_tag_raw <- Sys.getenv("RUN_TAG", "rerun_rule1_sum_ghsheat_ghsgreen")
 run_tag <- if (nzchar(run_tag_raw)) {
   if (startsWith(run_tag_raw, "_")) run_tag_raw else paste0("_", run_tag_raw)
@@ -82,7 +76,7 @@ green_labels <- c(
   imu_low_popw_ghs = "IMU low (pop-w., GHS)"
 )
 
-# 1) Compact curves
+# 1) compact curves
 build_compact_curves <- function(heat_set, out_stem, subtitle_txt) {
   green_set <- c("gvi_popw_points", "ndvi_popw_ghs", "imu_veg_total_popw_ghs")
   level_set <- c("low_p10", "high_p90")
@@ -140,7 +134,7 @@ curve_strong_paths <- build_compact_curves(
   subtitle_txt = "Stronger-signal view: WBGT min and T2M min; greenness: GVI, NDVI, IMU total (p10 vs p90)"
 )
 
-# One-per-family best-signal panel for map-choice communication:
+# one-per-family best-signal panel for map-choice (for paper):
 # WBGT min, T2M min, LST min x (GVI, NDVI, IMU total)
 curve_bestsignal_paths <- build_compact_curves(
   heat_set = c("wbgt_min", "t2m_min", "lst_min"),
@@ -148,7 +142,7 @@ curve_bestsignal_paths <- build_compact_curves(
   subtitle_txt = "Best-signal family trio: WBGT min, T2M min, LST min; greenness: GVI, NDVI, IMU total (p10 vs p90)"
 )
 
-# 2) Direct contrast figure
+# 2) direct contrast figure
 heat_order <- c("t2m_min", "t2m_mean", "t2m_max", "lst_min", "lst_mean", "lst_max", "wbgt_min", "wbgt_mean", "wbgt_max")
 base_green <- "gvi_popw_points"
 comparators <- c("ndvi_popw_ghs", "imu_veg_total_popw_ghs")
@@ -228,7 +222,7 @@ save_plot_dual(contrast_plot, out_contrast_png, out_contrast_pdf, width = 11.2, 
 out_contrast_csv <- tag_name("paris_effectmod_direct_contrasts.csv", run_tag)
 fwrite(contrast_dt, out_contrast_csv)
 
-# 3) Two-panel burden figure
+# 3) two-panel burden figure
 greens_keep <- c(
   "GVI (point pop-w., GHS)",
   "NDVI (pop-w., GHS)",
@@ -239,7 +233,7 @@ burden[, panel := paste0(heat, " (", threshold, ")")]
 panel_order <- c("WBGT mean (MMT)", "T2M mean (MMT)", "LST max (MMT)")
 burden <- burden[panel %in% panel_order]
 
-# Add reference observed burden (average across metrics within panel) as per-100k/JJAS
+# add ref observed burden (average across metrics within panel) as per-100k/JJAS
 obs_ref <- burden[, .(ad_obs_ref = mean(ad_obs, na.rm = TRUE)), by = panel]
 obs_ref[, ad_obs_ref_per100k := ad_obs_ref / 2200000 * 100000 / 10]
 burden <- merge(burden, obs_ref[, .(panel, ad_obs_ref_per100k)], by = "panel", all.x = TRUE)
@@ -278,7 +272,7 @@ burden_pct <- make_tile(
 )
 
 burden_two_panel <- burden_per100k + burden_pct +
-  plot_layout(ncol = 2, guides = "keep") +
+  plot_layout(ncol = 1, guides = "keep") +
   plot_annotation(
     title = "Burden comparison across greenness metrics",
     subtitle = "Direct GHS-weighted heat and harmonized GHS-weighted greenness; interpret rows (endpoints) separately.",
@@ -287,7 +281,7 @@ burden_two_panel <- burden_per100k + burden_pct +
 
 out_burden2_png <- file.path(fig_dir, tag_name("paris_burden_key_twopanel.png", run_tag))
 out_burden2_pdf <- file.path(fig_dir, tag_name("paris_burden_key_twopanel.pdf", run_tag))
-save_plot_dual(burden_two_panel, out_burden2_png, out_burden2_pdf, width = 15.5, height = 6.4)
+save_plot_dual(burden_two_panel, out_burden2_png, out_burden2_pdf, width = 8.5, height = 10)
 
 cat("Saved focused figures:\n")
 cat(" -", curve_main_paths[1], "\n")
