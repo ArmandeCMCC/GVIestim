@@ -172,7 +172,7 @@ green_order <- c(
 
 green_order_native <- c(
   "gvi_mean",
-  "ndvi_native_jjas",
+  "ndvi_areaw_arr",
   "imu_veg_total"
 )
 
@@ -498,7 +498,7 @@ curve_green_metrics <- c(
 )
 curve_green_metrics_native <- c(
   "gvi_mean",
-  "ndvi_native_jjas",
+  "ndvi_areaw_arr",
   "imu_veg_total"
 )
 

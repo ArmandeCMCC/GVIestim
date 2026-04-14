@@ -462,13 +462,13 @@ specs <- data.table(
   ),
   selected_green_std = c(
     "gvi_mean_std_iqr",
-    "ndvi_native_jjas_std_iqr",
+    "ndvi_areaw_arr_std_iqr",
     "imu_veg_total_std_iqr",
     "gvi_mean_std_iqr",
-    "ndvi_native_jjas_std_iqr",
+    "ndvi_areaw_arr_std_iqr",
     "imu_veg_total_std_iqr",
     "gvi_mean_std_iqr",
-    "ndvi_native_jjas_std_iqr",
+    "ndvi_areaw_arr_std_iqr",
     "imu_veg_total_std_iqr"
   ),
   threshold_mode = c(
@@ -484,13 +484,13 @@ specs <- data.table(
   ),
   stub = c(
     "wbgtmean_gvimean_mmt_native",
-    "wbgtmean_ndvinativejjas_mmt_native",
+    "wbgtmean_ndviareawarr_mmt_native",
     "wbgtmean_imuvegtotal_mmt_native",
     "t2mmean_gvimean_p22_native",
-    "t2mmean_ndvinativejjas_p22_native",
+    "t2mmean_ndviareawarr_p22_native",
     "t2mmean_imuvegtotal_p22_native",
     "lstmax_gvimean_mmt_native",
-    "lstmax_ndvinativejjas_mmt_native",
+    "lstmax_ndviareawarr_mmt_native",
     "lstmax_imuvegtotal_mmt_native"
   )
 )

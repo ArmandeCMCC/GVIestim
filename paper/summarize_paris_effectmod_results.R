@@ -118,7 +118,7 @@ green_order_main <- c(
 
 green_order_native_main <- c(
   "gvi_mean",
-  "ndvi_native_jjas",
+  "ndvi_areaw_arr",
   "imu_veg_total"
 )
 

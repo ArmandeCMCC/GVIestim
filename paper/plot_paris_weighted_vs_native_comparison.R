@@ -24,7 +24,7 @@ n <- fread("paris_effectmod_primary_table_p99_native_nativeheat.csv")
 # green metric mapping: weighted -> native
 green_map <- data.table(
   green_w = c("gvi_popw_points", "ndvi_popw_ghs", "imu_veg_total_popw_ghs"),
-  green_n = c("gvi_mean", "ndvi_native_jjas", "imu_veg_total"),
+  green_n = c("gvi_mean", "ndvi_areaw_arr", "imu_veg_total"),
   green_family = c("GVI", "NDVI", "IMU total")
 )
 
