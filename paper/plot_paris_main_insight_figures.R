@@ -142,7 +142,14 @@ curve_bestsignal_paths <- build_compact_curves(
   subtitle_txt = "Best-signal family trio: WBGT min, T2M min, LST min; greenness: GVI, NDVI, IMU total (p10 vs p90)"
 )
 
-# 2) direct contrast figure
+# MAIN TEXT representative trio: WBGT mean, T2M mean, LST max 
+curve_representative_paths <- build_compact_curves(
+  heat_set = c("wbgt_mean", "t2m_mean", "lst_max"),
+  out_stem = "paris_curves_effectmod_representative_trio",
+  subtitle_txt = "Representative metrics: WBGT mean, T2M mean, LST max; greenness: GVI, NDVI, IMU total (p10 vs p90)"
+)
+
+# 2) direct contrast figure — FULL (appendix) and TRIMMED (main text)
 heat_order <- c("t2m_min", "t2m_mean", "t2m_max", "lst_min", "lst_mean", "lst_max", "wbgt_min", "wbgt_mean", "wbgt_max")
 base_green <- "gvi_popw_points"
 comparators <- c("ndvi_popw_ghs", "imu_veg_total_popw_ghs")
@@ -222,6 +229,36 @@ save_plot_dual(contrast_plot, out_contrast_png, out_contrast_pdf, width = 11.2, 
 out_contrast_csv <- tag_name("paris_effectmod_direct_contrasts.csv", run_tag)
 fwrite(contrast_dt, out_contrast_csv)
 
+# 2b) TRIMMED direct contrast: 3 representative heat metrics only (main text)
+heat_order_trim <- c("t2m_mean", "lst_max", "wbgt_mean")
+contrast_dt_trim <- contrast_dt[heat_metric %in% heat_order_trim]
+contrast_dt_trim[, heat_label := factor(heat_labels[heat_metric], levels = rev(heat_labels[heat_order_trim]))]
+
+contrast_plot_trim <- ggplot(
+  contrast_dt_trim,
+  aes(x = delta_pct, y = heat_label)
+) +
+  geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.35) +
+  geom_errorbarh(aes(xmin = delta_pct_lo, xmax = delta_pct_hi), height = 0.22, linewidth = 0.45, colour = "#6b6b6b") +
+  geom_point(size = 2.0, colour = "#1f4e79") +
+  facet_wrap(~ contrast_label, ncol = 2) +
+  labs(
+    title = "Direct contrast of map-choice effects at p99",
+    subtitle = "Primary estimand (p10\u2192p90). Positive values mean stronger attenuation for GVI.",
+    x = "Difference in attenuation (%): GVI minus comparator",
+    y = NULL,
+    caption = "Representative metrics only (WBGT mean, T2M mean, LST max). Full results in Appendix."
+  ) +
+  theme_bw(base_size = 10.8) +
+  theme(
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "grey95", colour = "grey75")
+  )
+
+out_contrast_trim_png <- file.path(fig_dir, tag_name("paris_effectmod_direct_contrasts_main3.png", run_tag))
+out_contrast_trim_pdf <- file.path(fig_dir, tag_name("paris_effectmod_direct_contrasts_main3.pdf", run_tag))
+save_plot_dual(contrast_plot_trim, out_contrast_trim_png, out_contrast_trim_pdf, width = 11.2, height = 4.2)
+
 # 3) two-panel burden figure
 greens_keep <- c(
   "GVI (point pop-w., GHS)",
@@ -290,8 +327,12 @@ cat(" -", curve_strong_paths[1], "\n")
 cat(" -", curve_strong_paths[2], "\n")
 cat(" -", curve_bestsignal_paths[1], "\n")
 cat(" -", curve_bestsignal_paths[2], "\n")
-cat(" -", out_contrast_png, "\n")
-cat(" -", out_contrast_pdf, "\n")
+cat(" - [MAIN TEXT]", curve_representative_paths[1], "\n")
+cat(" - [MAIN TEXT]", curve_representative_paths[2], "\n")
+cat(" - [APPENDIX]", out_contrast_png, "\n")
+cat(" - [APPENDIX]", out_contrast_pdf, "\n")
 cat(" -", out_contrast_csv, "\n")
+cat(" - [MAIN TEXT]", out_contrast_trim_png, "\n")
+cat(" - [MAIN TEXT]", out_contrast_trim_pdf, "\n")
 cat(" -", out_burden2_png, "\n")
 cat(" -", out_burden2_pdf, "\n")

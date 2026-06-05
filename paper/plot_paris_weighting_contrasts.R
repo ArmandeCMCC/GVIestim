@@ -106,9 +106,45 @@ out_pdf <- file.path(fig_dir, paste0("paris_weighting_contrasts", run_tag, ".pdf
 ggsave(out_png, p, width = 12, height = 5.5, dpi = 300)
 ggsave(out_pdf, p, width = 12, height = 5.5)
 
+# MAIN TEXT trimmed version: 3 representative heat metrics only
+heat_order_main3 <- c("T2M mean", "LST max", "WBGT mean")
+dt_trim <- dt[heat_label %in% heat_order_main3]
+dt_trim[, heat_label := factor(heat_label, levels = rev(heat_order_main3))]
+
+p_trim <- ggplot(dt_trim, aes(x = contrast, y = heat_label, colour = green_label)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_pointrange(
+    aes(xmin = contrast_low, xmax = contrast_high),
+    position = position_dodge(width = 0.6),
+    size = 0.4
+  ) +
+  facet_wrap(~green_label, ncol = 3) +
+  scale_colour_manual(values = c("GVI" = "#2ca02c", "NDVI" = "#1f77b4", "IMU total" = "#d62728")) +
+  labs(
+    x = "Difference in attenuation (pp): population-weighted minus unweighted",
+    y = NULL,
+    title = "Effect of population-weighting on effect-modification estimates",
+    subtitle = "Primary estimand (p10\u2192p90 at p99). Positive = stronger attenuation for pop-weighted metric.",
+    caption = "Representative metrics only (WBGT mean, T2M mean, LST max). Full results in Appendix."
+  ) +
+  theme_bw(base_size = 10.8) +
+  theme(
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "grey95", colour = "grey75")
+  )
+
+out_trim_png <- file.path(fig_dir, paste0("paris_weighting_contrasts_main3", run_tag, ".png"))
+out_trim_pdf <- file.path(fig_dir, paste0("paris_weighting_contrasts_main3", run_tag, ".pdf"))
+
+ggsave(out_trim_png, p_trim, width = 12, height = 4.2, dpi = 300)
+ggsave(out_trim_pdf, p_trim, width = 12, height = 4.2)
+
 cat("Saved:\n")
-cat(" -", out_png, "\n")
-cat(" -", out_pdf, "\n")
+cat(" - [APPENDIX]", out_png, "\n")
+cat(" - [APPENDIX]", out_pdf, "\n")
+cat(" - [MAIN TEXT]", out_trim_png, "\n")
+cat(" - [MAIN TEXT]", out_trim_pdf, "\n")
 
 # also print summary
 cat("\nContrast summary (positive = pop-weighted shows stronger attenuation):\n")

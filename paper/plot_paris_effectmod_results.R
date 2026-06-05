@@ -4,7 +4,7 @@
 # Main paper run tag: _rerun_rule1_sum_ghsheat_ghsgreen.
 #
 # plotting / results-packaging script for Paris heat × greenness CTS/DLNM
-# results, updated for recent ggplot2 versions.
+# results
 
 # Inputs:
 #   - paris_effectmod_results_harmonized.csv
@@ -16,25 +16,6 @@
 #      Paris-paper (min -> max) contrasts
 #   3) Exposure-response curve plot for selected heat × greenness combinations
 
-# Output files:
-#   - figs/paris_forest_effectmod_p99.png
-#   - figs/paris_forest_effectmod_p99.pdf
-#   - figs/paris_forest_effectmod_p99_native.png
-#   - figs/paris_forest_effectmod_p99_native.pdf
-#   - figs/paris_forest_effectmod_p99_by_family.png
-#   - figs/paris_forest_effectmod_p99_by_family.pdf
-#   - figs/paris_forest_effectmod_p99_iqr.png
-#   - figs/paris_forest_effectmod_p99_iqr.pdf
-#   - figs/paris_forest_effectmod_p99_minmax.png
-#   - figs/paris_forest_effectmod_p99_minmax.pdf
-#   - figs/paris_curves_effectmod_selected.png           (PRIMARY p10->p90)
-#   - figs/paris_curves_effectmod_selected.pdf
-#   - figs/paris_curves_effectmod_selected_iqr.png       (sensitivity)
-#   - figs/paris_curves_effectmod_selected_iqr.pdf
-#   - figs/paris_curves_effectmod_selected_native.png
-#   - figs/paris_curves_effectmod_selected_native.pdf
-#   - figs/paris_curves_effectmod_selected_iqr_native.png
-#   - figs/paris_curves_effectmod_selected_iqr_native.pdf
 
 library(data.table)
 library(ggplot2)
@@ -486,6 +467,48 @@ forest_family_plot <- ggplot(
   )
 
 save_plot_dual(forest_family_plot, out_forestfam_png, out_forestfam_pdf, width = 13, height = 9)
+
+# 6b) MAIN TEXT trimmed forest: 3 representative heat metrics only
+heat_order_main3 <- c("t2m_mean", "lst_max", "wbgt_mean")
+green_order_main3 <- c("gvi_popw_points", "ndvi_popw_ghs", "imu_veg_total_popw_ghs")
+
+plot_dt_main3 <- copy(harm)[
+  heat_metric %in% heat_order_main3 & green_metric_raw %in% green_order_main3
+]
+plot_dt_main3[, heat_label := factor(heat_labels[heat_metric], levels = rev(heat_labels[heat_order_main3]))]
+plot_dt_main3[, green_label := factor(green_labels[green_metric_raw], levels = green_labels[green_order_main3])]
+plot_dt_main3[, `:=`(
+  cr_mod_primary = cr_mod_p99_p10p90,
+  cr_mod_primary_low = cr_mod_p99_p10p90_low,
+  cr_mod_primary_high = cr_mod_p99_p10p90_high
+)]
+
+forest_main3_plot <- ggplot(
+  plot_dt_main3,
+  aes(x = cr_mod_primary, y = heat_label, xmin = cr_mod_primary_low, xmax = cr_mod_primary_high)
+) +
+  geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.4) +
+  geom_errorbar(orientation = "y", width = 0.18, linewidth = 0.45) +
+  geom_point(size = 1.9) +
+  facet_wrap(~ green_label, ncol = 3, scales = "fixed") +
+  labs(
+    title = "Effect modification of heat-related mortality by greenness",
+    subtitle = "Primary contrast (p10\u2192p90) at p99. Representative metrics: WBGT mean, T2M mean, LST max.",
+    x = "% change in RR at p99 for greener vs less green districts (p10 \u2192 p90)",
+    y = NULL,
+    caption = "Negative values indicate lower heat-mortality risk in greener districts. Full results (all 9 heat metrics) in Appendix."
+  ) +
+  theme_bw(base_size = 11) +
+  theme(
+    strip.background = element_rect(fill = "grey95", colour = "grey70"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    plot.title.position = "plot"
+  )
+
+out_forest_main3_png <- file.path(fig_dir, tag_name("paris_forest_effectmod_p99_main3.png", run_tag))
+out_forest_main3_pdf <- file.path(fig_dir, tag_name("paris_forest_effectmod_p99_main3.pdf", run_tag))
+save_plot_dual(forest_main3_plot, out_forest_main3_png, out_forest_main3_pdf, width = 12, height = 4.5)
 
 # 7) curve plot subset
 curve_heat_metrics <- c("t2m_mean", "lst_max", "wbgt_mean")
