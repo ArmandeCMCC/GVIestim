@@ -47,7 +47,8 @@ for distributed lag non-linear modelling.
 | `arrondissements.shp` | Paris 20-arrondissement boundary polygons | [data.gouv.fr](https://www.data.gouv.fr/) |
 | `gvi_356_cities.csv` | Street-level Green View Index points (LCZ-filtered) | Provided dataset |
 | IMU shapefile or `IMU2022_O.geojson` | Ilots Morphologiques Urbains (urban islands) with vegetation fractions (`iv_haute`, `iv_basse`) | [IAU IdF](https://www.institutparisregion.fr/) |
-| NDVI Copernicus CLMS 300m COGs | NDVI 10-daily composites (2014-2017, JJAS) | [Copernicus Land](https://land.copernicus.eu/) |
+| ESA WorldCover Sentinel-2 NDVI 10m | Annual peak-greenness (p90) composites for 2020 and 2021 (main paper) | [ESA WorldCover](https://registry.opendata.aws/esa-worldcover-vito-composites/) |
+| NDVI Copernicus CLMS 300m COGs (optional) | NDVI 10-daily composites (2014-2017, JJAS) — used only by the legacy NDVI script for appendix robustness checks | [Copernicus Land](https://land.copernicus.eu/) |
 
 ## Execution order
 
@@ -63,8 +64,15 @@ These scripts can run independently of each other.
 # 1a. Aggregate individual mortality records into daily arrondissement counts
 Rscript build_paris_daily_deaths_fullgrid.R
 
-# 1b. Build NDVI arrondissement metrics (GHS-POP weighted + native)
-Rscript build_paris_arr_ndvi_metrics.R
+# 1b. MAIN: Build NDVI arrondissement metrics from ESA WorldCover Sentinel-2
+#     at 10m resolution (annual peak-greenness p90 composites, 2020-2021)
+Rscript build_paris_arr_ndvi_metrics_esa10m.R
+
+# 1b'. OPTIONAL (legacy / appendix sensitivity): rebuild NDVI metrics from the
+#      older Copernicus CLMS 300m (2014-2017 JJAS) product. Not used by the
+#      main paper, but populates the `ndvi_native_*` columns referenced in some
+#      sensitivity outputs.
+# Rscript build_paris_arr_ndvi_metrics.R
 
 # 1c. Build all greenness metrics (GVI, NDVI, IMU — both weighted and native)
 Rscript build_paris_arr_greenness_metrics.R
@@ -261,7 +269,8 @@ All modeling choices follow [Achebak et al. (2026)](https://doi.org/10.1038/s429
 | 2 | `build_paris_panel_deaths_heat_ghspopweighted_sumproj.R` | **MAIN**: GHS-POP sum-weighted UrbClim heat panel |
 | 3 | `build_paris_panel_deaths_heat_urbclim.R` | **APPENDIX**: Native (area-average) UrbClim heat panel |
 | 4 | `build_paris_arr_greenness_metrics.R` | All greenness metrics (GVI, NDVI, IMU; weighted + native) |
-| 5 | `build_paris_arr_ndvi_metrics.R` | NDVI from Copernicus CLMS 300m (JJAS 2014-2017) |
+| 5 | `build_paris_arr_ndvi_metrics_esa10m.R` | **MAIN**: NDVI from ESA WorldCover Sentinel-2 10m (annual p90 composites, 2020-2021). Replaces the older 300m source. |
+| 5b | `build_paris_arr_ndvi_metrics.R` | **LEGACY** (optional, appendix sensitivity): NDVI from Copernicus CLMS 300m (JJAS 2014-2017). Populates the `ndvi_native_*` columns; not used by the published main analysis. |
 | 6 | `build_paris_cts_ready_jjas_sumproj.R` | Merge deaths + heat + greenness into CTS-ready dataset |
 | 7 | `estimate_paris_baseline_cts_heat_metrics_rule1.R` | Baseline CTS/DLNM (MMT, p99, dose-response curves) |
 | 8 | `estimate_paris_effect_modification_cts_heat_green_rule1.R` | Heat x greenness interaction models |
