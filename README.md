@@ -1,8 +1,6 @@
-# Does greenness metric choice matter? Replication code
+# Urban green space metric choice and weighting matter for assessing cooling benefits for human health
 
-Replication code for the analysis of how urban greenness metric choice
-(GVI, NDVI, IMU) affects the assessment of heat-mortality attenuation
-in Paris.
+Replication codes for Armande Aboudrar-Méda and Giacomo Falchetta, "Urban green space metric choice and weighting matter for assessing cooling benefits for human health" [*Environmental Research: Infrastructure and Sustainability*, 2026].
 
 This work extends the data and baseline model of
 [Achebak et al. (2026)](https://doi.org/10.1038/s42949-025-00334-5)
